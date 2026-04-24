@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Pipeline Test Runner</title>
+    <style>
+      body { font-family: monospace; background: #0d1117; color: #c9d1d9; padding: 2rem; }
+      h1 { color: #58a6ff; margin-bottom: 0.5rem; }
+      p { color: #8b949e; margin-top: 0; }
+      pre { white-space: pre-wrap; line-height: 1.6; }
+      .pass    { color: #3fb950; }
+      .fail    { color: #f85149; }
+      .info    { color: #8b949e; }
+      .section { color: #d2a8ff; font-weight: bold; }
+      #status  { font-size: 1.2rem; margin-top: 1rem; padding: 0.5rem 1rem;
+                 display: inline-block; border-radius: 4px; }
+      #status.running { background: #1f2d3d; color: #58a6ff; }
+      #status.ok      { background: #0d2818; color: #3fb950; }
+      #status.error   { background: #2d1318; color: #f85149; }
+      #summary        { margin-top: 0.5rem; color: #8b949e; font-size: 0.9rem; }
+    </style>
+  </head>
+  <body>
+    <h1>Pipeline Test Runner</h1>
+    <p>Results appear below. Open the browser console (F12) for debug output from the pipeline.</p>
+    <div id="status" class="running">Running…</div>
+    <div id="summary"></div>
+    <pre id="output"></pre>
+
+    <script type="module">
+      import { clusterNotes } from './src/pipeline.js';
+      import { runTests } from './test-pipeline.js';
+
+      const out     = document.getElementById('output');
+      const status  = document.getElementById('status');
+      const summary = document.getElementById('summary');
+
+      let passed = 0;
+      let failed = 0;
+
+      function log(text, cls = '') {
+        const span = document.createElement('span');
+        if (cls) span.className = cls;
+        span.textContent = text + '\n';
+        out.appendChild(span);
+        // Scroll to bottom so progress is visible during long model runs
+        span.scrollIntoView({ block: 'end' });
+      }
+
+      function assert(condition, message) {
+        if (condition) {
+          log(`  ✓ ${message}`, 'pass');
+          passed++;
+        } else {
+          log(`  ✗ FAIL: ${message}`, 'fail');
+          failed++;
+        }
+      }
+
+      runTests(clusterNotes, { log, assert })
+        .then(() => {
+          const total = passed + failed;
+          log(`\n${passed}/${total} passed`, failed > 0 ? 'fail' : 'pass');
+          status.textContent  = failed > 0 ? `${failed} assertion(s) failed` : 'ALL ASSERTIONS PASSED';
+          status.className    = failed > 0 ? 'error' : 'ok';
+          summary.textContent = `${passed} passed · ${failed} failed · ${total} total`;
+        })
+        .catch(err => {
+          log(`\nPipeline threw an unexpected error:\n${err.stack || err}`, 'fail');
+          status.textContent = 'Error — see output';
+          status.className   = 'error';
+          console.error(err);
+        });
+    </script>
+  </body>
+</html>

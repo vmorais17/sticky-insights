@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Local Semantic Canvas — On-Device Sticky Clustering</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="header-left">
+        <span class="app-logo" aria-label="Local Semantic Canvas">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" role="presentation" class="app-logo-svg" aria-hidden="true">
+            <rect x="2"  y="2"  width="10" height="10" rx="2" fill="#FFF176"/>
+            <rect x="16" y="2"  width="10" height="10" rx="2" fill="#81D4FA"/>
+            <rect x="2"  y="16" width="10" height="10" rx="2" fill="#C5E1A5"/>
+            <rect x="16" y="16" width="10" height="10" rx="2" fill="#F48FB1"/>
+          </svg>
+          Local Semantic Canvas
+        </span>
+      </div>
+      <div class="header-center">
+        <div id="view-toggle" class="view-toggle hidden">
+          <button id="btn-canvas" class="toggle-btn active">Canvas</button>
+          <button id="btn-cluster" class="toggle-btn">Insights</button>
+          <button id="btn-semantics" class="toggle-btn">Semantics</button>
+        </div>
+      </div>
+      <div class="header-right">
+        <div id="hull-toggle-wrap" class="hull-toggle-wrap hidden">
+          <span class="hull-toggle-label">Related Themes</span>
+          <label class="pill-toggle" title="Outline related sticky notes by theme on the canvas">
+            <input type="checkbox" id="hull-toggle" aria-label="Show related themes">
+            <span class="pill-track"><span class="pill-knob"></span></span>
+          </label>
+        </div>
+        <button id="btn-cluster-action" class="btn-primary">Find Themes</button>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <!-- Progress bar (shown during embedding computation) -->
+      <section id="progress-section" class="progress-section hidden">
+        <div class="progress-content">
+          <p id="progress-label" class="progress-label">Loading model…</p>
+          <div class="progress-bar-track">
+            <div id="progress-bar" class="progress-bar-fill"></div>
+          </div>
+          <p id="progress-detail" class="progress-detail"></p>
+        </div>
+      </section>
+
+      <!-- Canvas view (default) -->
+      <section id="canvas-view" class="view">
+        <div id="canvas-container"></div>
+      </section>
+
+      <!-- Cluster view -->
+      <section id="cluster-view" class="view hidden">
+        <div id="cluster-container"></div>
+      </section>
+
+      <!-- Semantic space view -->
+      <section id="semantic-view" class="view hidden"></section>
+    </main>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
