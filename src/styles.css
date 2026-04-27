@@ -181,6 +181,23 @@ body {
 .btn-primary:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.btn-secondary {
+  padding: 7px 18px;
+  background: white;
+  color: var(--color-text);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+
+.btn-secondary:hover:not(:disabled) { border-color: var(--color-text-muted); background: var(--color-bg); }
+.btn-secondary:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* ─── Main area ────────────────────────────────────────────────── */
 .app-main {
   flex: 1;
@@ -771,6 +788,75 @@ body {
   color: var(--color-text-muted); /* #6b6b6b — replaces #e0e0da (~1.2:1 fail) */
   padding: 0 4px;
   font-weight: 400;
+}
+
+/* ─── Board picker ─────────────────────────────────────────────── */
+.board-picker {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(245, 245, 240, 0.92);
+  z-index: 25;
+  padding: 24px;
+}
+
+.board-picker-card {
+  width: 100%;
+  max-width: 440px;
+  background: white;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 28px 28px 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.board-picker-title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.board-picker-subtitle {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--color-text-muted);
+}
+
+.board-picker-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.board-picker-actions button {
+  width: 100%;
+  padding: 10px 16px;
+  font-size: 13px;
+}
+
+.board-picker-error {
+  font-size: 13px;
+  color: #b91c1c;       /* 5.9:1 on white — WCAG AA */
+  padding: 10px 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+}
+
+.board-picker-unsupported {
+  font-size: 13px;
+  color: #92400e;       /* 7.0:1 on white — WCAG AA */
+  padding: 10px 12px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  line-height: 1.5;
 }
 
 /* ─── Reduced motion ────────────────────────────────────────────── */
