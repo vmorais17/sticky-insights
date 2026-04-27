@@ -11,7 +11,7 @@
 import { loadNotes, validateNotes } from './loader.js';
 import {
   isSupported as fsSupported,
-  openBoard, createBoard, readBoard,
+  openBoard, createBoard, readBoard, writeBoard,
   listRecentBoards, forgetBoard,
 } from './board-fs.js';
 import { clusterNotes } from './pipeline.js';
@@ -56,6 +56,8 @@ let assignments       = [];
 let clusters          = [];
 let clusterViewApi    = null;
 let currentBoard      = null; // { id, handle, name } once a board is opened
+let noteIdToIdx       = new Map(); // rebuilt whenever `notes` is replaced
+let saveTimer         = null;      // debounce handle for writeBoard
 
 // ─── Progress helpers ────────────────────────────────────────────
 function showProgress(label = '', pct = 0) {
@@ -104,6 +106,46 @@ function applyHullVisibility() {
 
 hullToggle.addEventListener('change', applyHullVisibility);
 
+// ─── Drag persistence ─────────────────────────────────────────────
+// Drag updates happen in canvas-view; this module owns the file save.
+// Saves are debounced so a flurry of quick re-positions coalesces into
+// one write per "settle." 300 ms is imperceptible after a mouse-up but
+// long enough that successive drags batch.
+
+const SAVE_DEBOUNCE_MS = 300;
+
+function scheduleSave() {
+  if (!currentBoard) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try {
+      await writeBoard(currentBoard.handle, notes);
+    } catch (err) {
+      // Soft-fail: the user's UI state is the truth in memory; next
+      // interaction will re-prompt for permission if it was revoked.
+      console.error('Save failed:', err);
+    }
+  }, SAVE_DEBOUNCE_MS);
+}
+
+function handleNoteDragEnd(id, { x, y, z }) {
+  const i = noteIdToIdx.get(id);
+  if (i === undefined) return;
+  notes[i].x = x;
+  notes[i].y = y;
+  notes[i].z = z;
+
+  // If hulls are present (post-clustering), recompute by re-rendering.
+  // Without clusters, the in-place transform is already correct — no re-render.
+  if (assignments.length > 0) {
+    const labels = clusters.map((c) => c.label);
+    renderCanvas(canvasContainer, notes, assignments, labels, { onDragEnd: handleNoteDragEnd });
+    applyHullVisibility();
+  }
+
+  scheduleSave();
+}
+
 // ─── Cluster action ───────────────────────────────────────────────
 btnClusterAction.addEventListener('click', async () => {
   if (notes.length === 0) return;
@@ -151,7 +193,7 @@ btnClusterAction.addEventListener('click', async () => {
 
     hideProgress();
 
-    renderCanvas(canvasContainer, notes, assignments, labels);
+    renderCanvas(canvasContainer, notes, assignments, labels, { onDragEnd: handleNoteDragEnd });
     clusterViewApi = renderClusterView(clusterContainer, notes, assignments, clusters);
 
     // Apply hull visibility immediately after render — hull-layer starts hidden
@@ -195,11 +237,12 @@ async function loadBoard({ id, handle, data, name }) {
     return;
   }
   notes        = validated;
+  noteIdToIdx  = new Map(notes.map((n, i) => [n.id, i]));
   currentBoard = { id, handle, name };
   boardPicker.classList.add('hidden');
   canvasView.classList.remove('hidden');
   btnClusterAction.disabled = false;
-  renderCanvas(canvasContainer, notes);
+  renderCanvas(canvasContainer, notes, null, null, { onDragEnd: handleNoteDragEnd });
 }
 
 async function handleContinue(record) {

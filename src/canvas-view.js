@@ -102,8 +102,12 @@ export function expandHull(hull, pad) {
  * @param {Array} notes                raw note objects
  * @param {number[]|null} assignments  cluster index per note, or null if not yet clustered
  * @param {string[]|null} labels       cluster label per cluster index
+ * @param {{ onDragEnd?: (id: string, coords: {x:number, y:number, z:number}) => void }} [options]
+ *        If `onDragEnd` is provided, notes become draggable; the callback fires
+ *        on each drag-release with the new integer coords and incremented z.
  */
-export function renderCanvas(container, notes, assignments = null, labels = null) {
+export function renderCanvas(container, notes, assignments = null, labels = null, options = {}) {
+  const { onDragEnd } = options;
   const pos = notes.map((n) => ({ x: n.x, y: n.y }));
 
   const xs   = pos.map((p) => p.x);
@@ -254,6 +258,47 @@ export function renderCanvas(container, notes, assignments = null, labels = null
       .attr('fill', (_, i) => clusterColor(assignments[i]))
       .attr('stroke', 'white')
       .attr('stroke-width', 1.5);
+  }
+
+  // ── Z-stack ordering & drag ──────────────────────────────────────────────────
+  // Reorder note groups by z so a higher z paints on top of lower-z siblings.
+  // The data array order is unchanged — assignments[i] still aligns with notes[i].
+  noteGroups.sort((a, b) => a.z - b.z);
+
+  if (typeof onDragEnd === 'function') {
+    let didMove = false;
+
+    const drag = d3.drag()
+      .on('start', function () {
+        didMove = false;
+        d3.select(this).raise().style('cursor', 'grabbing');
+        // Hide hulls during drag, regardless of toggle state.
+        // .hull-layer may not exist yet (no clustering) — selection is empty, no-op.
+        g.select('.hull-layer').style('opacity', 0);
+      })
+      .on('drag', function (event, d) {
+        didMove = true;
+        const i = notes.indexOf(d);
+        pos[i].x += event.dx;
+        pos[i].y += event.dy;
+        d3.select(this).attr('transform', `translate(${pos[i].x}, ${pos[i].y})`);
+      })
+      .on('end', function (_, d) {
+        d3.select(this).style('cursor', 'grab');
+        // Clear the inline opacity override so the CSS toggle state takes back over.
+        g.select('.hull-layer').style('opacity', null);
+        if (!didMove) return; // pure click without movement — no z bump, no save
+        const i    = notes.indexOf(d);
+        const maxZ = notes.reduce((m, n) => (n.z > m ? n.z : m), 0);
+        d.z = maxZ + 1;
+        onDragEnd(d.id, {
+          x: Math.round(pos[i].x),
+          y: Math.round(pos[i].y),
+          z: d.z,
+        });
+      });
+
+    noteGroups.style('cursor', 'grab').call(drag);
   }
 
   // ── Cluster convex hulls ─────────────────────────────────────────────────────
