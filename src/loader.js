@@ -35,20 +35,15 @@ function validateNote(note, index) {
 }
 
 /**
- * Loads and validates the sticky notes JSON from the given URL.
- * @param {string} url
- * @returns {Promise<Array>} validated array of note objects
+ * Validates an already-parsed value against the sticky notes schema and
+ * returns the normalised array (with `z` defaulted to 0). Throws on any
+ * validation failure. Used both by loadNotes (URL fetch) and by the FSA
+ * board picker, which receives parsed JSON directly from disk.
+ *
+ * @param {unknown} data
+ * @returns {Array} validated, z-defaulted notes
  */
-export async function loadNotes(url) {
-  let data;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-    data = await res.json();
-  } catch (err) {
-    throw new Error(`Failed to load sticky notes: ${err.message}`);
-  }
-
+export function validateNotes(data) {
   if (!Array.isArray(data)) {
     throw new Error('Sticky notes JSON must be a top-level array');
   }
@@ -62,4 +57,21 @@ export async function loadNotes(url) {
   }
 
   return data.map((n) => ({ ...n, z: typeof n.z === 'number' ? n.z : 0 }));
+}
+
+/**
+ * Loads and validates the sticky notes JSON from the given URL.
+ * @param {string} url
+ * @returns {Promise<Array>} validated array of note objects
+ */
+export async function loadNotes(url) {
+  let data;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    data = await res.json();
+  } catch (err) {
+    throw new Error(`Failed to load sticky notes: ${err.message}`);
+  }
+  return validateNotes(data);
 }

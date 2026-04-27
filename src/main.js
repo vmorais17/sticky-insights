@@ -1,9 +1,19 @@
 /**
  * main.js — Application entry point.
- * Wires together: data loading → canvas render → clustering → both views.
+ * Wires together: board picker → canvas render → clustering → both views.
+ *
+ * Privacy: note content stays in the browser. With FSA persistence, it also
+ * stays on the user's local disk inside whichever folder they chose; nothing
+ * is uploaded by this app, and any cross-device sync is delegated entirely
+ * to the user's OS-level cloud-drive client.
  */
 
-import { loadNotes } from './loader.js';
+import { loadNotes, validateNotes } from './loader.js';
+import {
+  isSupported as fsSupported,
+  openBoard, createBoard, readBoard,
+  listRecentBoards, forgetBoard,
+} from './board-fs.js';
 import { clusterNotes } from './pipeline.js';
 import { renderCanvas } from './canvas-view.js';
 import { renderClusterView } from './cluster-view.js';
@@ -29,6 +39,14 @@ const progressBar     = document.getElementById('progress-bar');
 const progressLabel   = document.getElementById('progress-label');
 const progressDetail  = document.getElementById('progress-detail');
 
+const boardPicker            = document.getElementById('board-picker');
+const btnContinue            = document.getElementById('btn-continue');
+const continueName           = document.getElementById('continue-name');
+const btnOpen                = document.getElementById('btn-open');
+const btnCreate              = document.getElementById('btn-create');
+const boardPickerError       = document.getElementById('board-picker-error');
+const boardPickerUnsupported = document.getElementById('board-picker-unsupported');
+
 // ─── App state ───────────────────────────────────────────────────
 // Module-scope so showView() can pass current values to renderSemanticView
 // regardless of when the Semantics tab is activated relative to clustering.
@@ -37,6 +55,7 @@ let embeddingsReduced = [];
 let assignments       = [];
 let clusters          = [];
 let clusterViewApi    = null;
+let currentBoard      = null; // { id, handle, name } once a board is opened
 
 // ─── Progress helpers ────────────────────────────────────────────
 function showProgress(label = '', pct = 0) {
@@ -152,18 +171,101 @@ btnClusterAction.addEventListener('click', async () => {
   }
 });
 
-// ─── Initial load: fetch notes and render canvas immediately ──────
-async function init() {
+// ─── Board picker ─────────────────────────────────────────────────
+function showPickerError(msg) {
+  boardPickerError.textContent = msg;
+  boardPickerError.classList.remove('hidden');
+}
+
+function clearPickerError() {
+  boardPickerError.textContent = '';
+  boardPickerError.classList.add('hidden');
+}
+
+// Loads validated notes into app state and reveals the canvas.
+// Caller has already confirmed read access; data is the parsed JSON contents.
+async function loadBoard({ id, handle, data, name }) {
+  let validated;
   try {
-    notes = await loadNotes('/data/sticky_notes.json');
-    renderCanvas(canvasContainer, notes);
+    validated = validateNotes(data);
   } catch (err) {
-    console.error('Failed to load notes:', err);
-    canvasContainer.innerHTML = `
-      <p style="padding:24px;color:#e11d48;font-size:14px;">
-        Error loading sticky notes: ${err.message}
-      </p>`;
+    // Bad schema — drop the recents entry so we don't keep offering it.
+    if (id) await forgetBoard(id);
+    showPickerError(`Couldn't load that board: ${err.message}`);
+    return;
+  }
+  notes        = validated;
+  currentBoard = { id, handle, name };
+  boardPicker.classList.add('hidden');
+  canvasView.classList.remove('hidden');
+  btnClusterAction.disabled = false;
+  renderCanvas(canvasContainer, notes);
+}
+
+async function handleContinue(record) {
+  clearPickerError();
+  try {
+    const data = await readBoard(record.handle); // ensurePermission inside
+    await loadBoard({ id: record.id, handle: record.handle, data, name: record.name });
+  } catch (err) {
+    if (err.name === 'NotAllowedError') {
+      showPickerError('Permission was denied. Pick another board?');
+      return;
+    }
+    if (err.name === 'NotFoundError') {
+      await forgetBoard(record.id);
+      btnContinue.classList.add('hidden');
+      showPickerError(`"${record.name}" wasn't found on disk and was removed from recents.`);
+      return;
+    }
+    showPickerError(`Couldn't open "${record.name}": ${err.message}`);
   }
 }
 
-init();
+async function handleOpen() {
+  clearPickerError();
+  try {
+    const result = await openBoard();
+    await loadBoard({ ...result, name: result.handle.name });
+  } catch (err) {
+    if (err.name === 'AbortError') return; // user cancelled the picker
+    showPickerError(`Couldn't open board: ${err.message}`);
+  }
+}
+
+async function handleCreate() {
+  clearPickerError();
+  try {
+    // Seed from the bundled starter dataset (already validated by loadNotes).
+    const starter = await loadNotes('/data/sticky_notes.json');
+    const result  = await createBoard(starter, 'sticky-notes.json');
+    await loadBoard({ ...result, name: result.handle.name });
+  } catch (err) {
+    if (err.name === 'AbortError') return;
+    showPickerError(`Couldn't create board: ${err.message}`);
+  }
+}
+
+btnOpen.addEventListener('click', handleOpen);
+btnCreate.addEventListener('click', handleCreate);
+
+async function setupPicker() {
+  btnClusterAction.disabled = true;
+
+  if (!fsSupported) {
+    boardPickerUnsupported.classList.remove('hidden');
+    btnOpen.disabled   = true;
+    btnCreate.disabled = true;
+    return;
+  }
+
+  const recents = await listRecentBoards();
+  if (recents.length > 0) {
+    const last = recents[0];
+    continueName.textContent = last.name;
+    btnContinue.classList.remove('hidden');
+    btnContinue.onclick = () => handleContinue(last);
+  }
+}
+
+setupPicker();
