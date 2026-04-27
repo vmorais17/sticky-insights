@@ -1,8 +1,8 @@
 /**
- * canvas-view.js — SVG canvas rendering notes at their original x/y positions.
+ * canvas-view.js — SVG canvas rendering notes at their persisted x/y positions.
  *
- * Notes are rendered as square sticky cards at the coordinates from the JSON.
- * Overlapping notes are pushed apart while staying near their original position.
+ * Notes render at the coordinates carried in the JSON. Overlap resolution is a
+ * build-time step (scripts/resolve-overlaps.mjs); the runtime trusts the data.
  * After clustering, a cluster-color border + dot identifies each group.
  * Hover reveals the author name.
  */
@@ -11,7 +11,6 @@ import * as d3 from 'd3';
 
 const NOTE_W  = 160;
 const NOTE_H  = 160; // square stickies
-const GAP     = 8;   // minimum gap between notes after collision resolution
 const PADDING = 72;  // canvas padding around the note extent
 
 // Sticky-note paper palette (pastel fills tuned for ≥4.5:1 text contrast)
@@ -78,52 +77,6 @@ export function clusterColor(idx) {
 }
 
 /**
- * Resolves overlapping notes by iteratively pushing them apart.
- * Each note is treated as an axis-aligned rectangle (NOTE_W × NOTE_H).
- * A soft pull back toward the original position preserves spatial intent.
- *
- * @param {Array<{x: number, y: number}>} notes
- * @returns {Array<{x: number, y: number}>} resolved positions (same order)
- */
-function resolveOverlaps(notes) {
-  const ITERS       = 60;
-  const ORIGIN_PULL = 0.08; // how strongly each note is pulled back to its origin
-
-  const pos    = notes.map((n) => ({ x: n.x, y: n.y }));
-  const origin = notes.map((n) => ({ x: n.x, y: n.y }));
-
-  for (let iter = 0; iter < ITERS; iter++) {
-    for (let i = 0; i < pos.length; i++) {
-      for (let j = i + 1; j < pos.length; j++) {
-        const dx       = pos[j].x - pos[i].x;
-        const dy       = pos[j].y - pos[i].y;
-        const overlapX = NOTE_W + GAP - Math.abs(dx);
-        const overlapY = NOTE_H + GAP - Math.abs(dy);
-
-        if (overlapX > 0 && overlapY > 0) {
-          // Push apart along the axis of least penetration
-          if (overlapX < overlapY) {
-            const shift = overlapX / 2;
-            pos[i].x -= dx > 0 ? shift : -shift;
-            pos[j].x += dx > 0 ? shift : -shift;
-          } else {
-            const shift = overlapY / 2;
-            pos[i].y -= dy > 0 ? shift : -shift;
-            pos[j].y += dy > 0 ? shift : -shift;
-          }
-        }
-      }
-
-      // Gently pull back toward original position
-      pos[i].x += (origin[i].x - pos[i].x) * ORIGIN_PULL;
-      pos[i].y += (origin[i].y - pos[i].y) * ORIGIN_PULL;
-    }
-  }
-
-  return pos;
-}
-
-/**
  * Expands a convex hull polygon outward from its centroid by `pad` pixels.
  * Used to give cluster hulls breathing room beyond the note rectangle edges.
  *
@@ -151,7 +104,7 @@ export function expandHull(hull, pad) {
  * @param {string[]|null} labels       cluster label per cluster index
  */
 export function renderCanvas(container, notes, assignments = null, labels = null) {
-  const pos = resolveOverlaps(notes);
+  const pos = notes.map((n) => ({ x: n.x, y: n.y }));
 
   const xs   = pos.map((p) => p.x);
   const ys   = pos.map((p) => p.y);

@@ -3,400 +3,450 @@
     "id": "note_001",
     "text": "Onboarding flow feels confusing for new athletes",
     "x": 210,
-    "y": 185,
+    "y": -148,
     "author": "user_5",
-    "color": "yellow"
+    "color": "yellow",
+    "z": 0
   },
   {
     "id": "note_002",
     "text": "Profile setup is broken on Android",
-    "x": 225,
-    "y": 275,
+    "x": 185,
+    "y": 450,
     "author": "user_9",
-    "color": "yellow"
+    "color": "yellow",
+    "z": 0
   },
   {
     "id": "note_003",
     "text": "Sign-in throws a generic error after entering my email",
-    "x": 195,
-    "y": 200,
+    "x": 172,
+    "y": 125,
     "author": "user_2",
-    "color": "yellow"
+    "color": "yellow",
+    "z": 0
   },
   {
     "id": "note_004",
     "text": "Password reset email never lands in my inbox",
-    "x": 215,
-    "y": 260,
+    "x": 180,
+    "y": 206,
     "author": "user_9",
-    "color": "yellow"
+    "color": "yellow",
+    "z": 0
   },
   {
     "id": "note_005",
     "text": "Strava import keeps redirecting back to authorization",
     "x": 175,
-    "y": 130,
+    "y": -32,
     "author": "user_7",
-    "color": "yellow"
+    "color": "yellow",
+    "z": 0
   },
   {
     "id": "note_006",
     "text": "Verification code is rejected even when I type it correctly",
-    "x": 155,
-    "y": 220,
+    "x": 33,
+    "y": 284,
     "author": "user_1",
-    "color": "yellow"
+    "color": "yellow",
+    "z": 0
   },
   {
     "id": "note_007",
     "text": "App signs me out in the middle of a workout",
-    "x": 180,
-    "y": 160,
+    "x": 30,
+    "y": 124,
     "author": "user_3",
-    "color": "yellow"
+    "color": "yellow",
+    "z": 0
   },
   {
     "id": "note_008",
     "text": "Can't update my training goals — the save button does nothing",
-    "x": 250,
-    "y": 190,
+    "x": 335,
+    "y": -12,
     "author": "user_2",
-    "color": "orange"
+    "color": "orange",
+    "z": 0
   },
   {
     "id": "note_009",
     "text": "Account locks after a single wrong password attempt",
-    "x": 275,
-    "y": 250,
+    "x": 191,
+    "y": 360,
     "author": "user_10",
-    "color": "orange"
+    "color": "orange",
+    "z": 0
   },
   {
     "id": "note_010",
     "text": "Apple Health permissions prompt appears on every launch",
-    "x": 235,
-    "y": 130,
+    "x": 332,
+    "y": 118,
     "author": "user_9",
-    "color": "yellow"
+    "color": "yellow",
+    "z": 0
   },
   {
     "id": "note_011",
     "text": "Need richer export formats — TCX coverage is too limited",
-    "x": 750,
-    "y": 215,
+    "x": 796,
+    "y": 366,
     "author": "user_9",
-    "color": "green"
+    "color": "green",
+    "z": 0
   },
   {
     "id": "note_012",
     "text": "Exported summary image crops out the elevation chart",
-    "x": 735,
-    "y": 160,
+    "x": 826,
+    "y": -37,
     "author": "user_6",
-    "color": "blue"
+    "color": "blue",
+    "z": 0
   },
   {
     "id": "note_013",
     "text": "Can't export a specific lap — only the full activity",
-    "x": 695,
-    "y": 210,
+    "x": 509,
+    "y": 45,
     "author": "user_4",
-    "color": "green"
+    "color": "green",
+    "z": 0
   },
   {
     "id": "note_014",
     "text": "Activity export takes ages and sometimes never finishes",
-    "x": 800,
-    "y": 215,
+    "x": 951,
+    "y": 140,
     "author": "user_2",
-    "color": "green"
+    "color": "green",
+    "z": 0
   },
   {
     "id": "note_015",
     "text": "Activity privacy settings are confusing to configure",
-    "x": 690,
-    "y": 290,
+    "x": 664,
+    "y": 291,
     "author": "user_6",
-    "color": "blue"
+    "color": "blue",
+    "z": 0
   },
   {
     "id": "note_016",
     "text": "Shared route image looks blurry compared to the in-app map",
-    "x": 680,
-    "y": 245,
+    "x": 944,
+    "y": 295,
     "author": "user_5",
-    "color": "blue"
+    "color": "blue",
+    "z": 0
   },
   {
     "id": "note_017",
     "text": "Exported GPX file names are inconsistent and hard to track",
-    "x": 675,
-    "y": 205,
+    "x": 674,
+    "y": -23,
     "author": "user_4",
-    "color": "blue"
+    "color": "blue",
+    "z": 0
   },
   {
     "id": "note_018",
     "text": "No way to schedule weekly summary emails to my coach",
-    "x": 665,
-    "y": 230,
+    "x": 802,
+    "y": 258,
     "author": "user_9",
-    "color": "blue"
+    "color": "blue",
+    "z": 0
   },
   {
     "id": "note_019",
     "text": "Embedded workout widgets don't refresh after I edit an activity",
-    "x": 665,
-    "y": 135,
+    "x": 648,
+    "y": 133,
     "author": "user_1",
-    "color": "blue"
+    "color": "blue",
+    "z": 0
   },
   {
     "id": "note_020",
     "text": "Can't export kudos and comments along with the activity",
-    "x": 740,
-    "y": 140,
+    "x": 800,
+    "y": 96,
     "author": "user_7",
-    "color": "green"
+    "color": "green",
+    "z": 0
   },
   {
     "id": "note_021",
     "text": "Activity feed feels sluggish after a few years of runs",
-    "x": 345,
-    "y": 698,
+    "x": 464,
+    "y": 816,
     "author": "user_10",
-    "color": "purple"
+    "color": "purple",
+    "z": 0
   },
   {
     "id": "note_022",
     "text": "Map freezes for a few seconds when I zoom into a route",
-    "x": 250,
-    "y": 712,
+    "x": 255,
+    "y": 934,
     "author": "user_8",
-    "color": "pink"
+    "color": "pink",
+    "z": 0
   },
   {
     "id": "note_023",
     "text": "Pause button has a noticeable delay during a run",
-    "x": 240,
-    "y": 685,
+    "x": 87,
+    "y": 790,
     "author": "user_9",
-    "color": "purple"
+    "color": "purple",
+    "z": 0
   },
   {
     "id": "note_024",
     "text": "App crashes when I open a long ride history",
-    "x": 235,
-    "y": 595,
+    "x": 200,
+    "y": 618,
     "author": "user_10",
-    "color": "purple"
+    "color": "purple",
+    "z": 0
   },
   {
     "id": "note_025",
     "text": "Sync indicator spins forever but the workout doesn't upload",
-    "x": 135,
-    "y": 780,
+    "x": -49,
+    "y": 810,
     "author": "user_3",
-    "color": "purple"
+    "color": "purple",
+    "z": 0
   },
   {
     "id": "note_026",
     "text": "Searching past activities is painfully slow",
-    "x": 260,
-    "y": 660,
+    "x": 361,
+    "y": 803,
     "author": "user_2",
-    "color": "pink"
+    "color": "pink",
+    "z": 0
   },
   {
     "id": "note_027",
     "text": "Scrolling stutters on older Android phones",
-    "x": 180,
-    "y": 590,
+    "x": -63,
+    "y": 647,
     "author": "user_7",
-    "color": "pink"
+    "color": "pink",
+    "z": 0
   },
   {
     "id": "note_028",
     "text": "Battery drains quickly even when the app is in the background",
-    "x": 195,
-    "y": 700,
+    "x": 39,
+    "y": 492,
     "author": "user_8",
-    "color": "purple"
+    "color": "purple",
+    "z": 0
   },
   {
     "id": "note_029",
     "text": "Offline workouts get dropped when the phone reconnects",
-    "x": 340,
-    "y": 635,
+    "x": 212,
+    "y": 786,
     "author": "user_1",
-    "color": "pink"
+    "color": "pink",
+    "z": 0
   },
   {
     "id": "note_030",
     "text": "Random 'something went wrong' toasts appear with no detail",
-    "x": 215,
-    "y": 600,
+    "x": 94,
+    "y": 629,
     "author": "user_5",
-    "color": "purple"
+    "color": "purple",
+    "z": 0
   },
   {
     "id": "note_031",
     "text": "Hard to tell which friends are live during a group ride",
-    "x": 765,
-    "y": 705,
+    "x": 758,
+    "y": 958,
     "author": "user_8",
-    "color": "yellow"
+    "color": "yellow",
+    "z": 0
   },
   {
     "id": "note_032",
     "text": "Comments on activities get buried — there's no thread view",
-    "x": 820,
-    "y": 645,
+    "x": 947,
+    "y": 465,
     "author": "user_5",
-    "color": "yellow"
+    "color": "yellow",
+    "z": 0
   },
   {
     "id": "note_033",
     "text": "@mentions in comments don't notify the right user",
-    "x": 695,
-    "y": 670,
+    "x": 621,
+    "y": 793,
     "author": "user_5",
-    "color": "yellow"
+    "color": "yellow",
+    "z": 0
   },
   {
     "id": "note_034",
     "text": "Too many push notifications for minor kudos",
-    "x": 770,
-    "y": 740,
+    "x": 924,
+    "y": 902,
     "author": "user_9",
-    "color": "yellow"
+    "color": "yellow",
+    "z": 0
   },
   {
     "id": "note_035",
     "text": "No notification when someone replies to my comment",
-    "x": 675,
-    "y": 638,
+    "x": 666,
+    "y": 627,
     "author": "user_2",
-    "color": "blue"
+    "color": "blue",
+    "z": 0
   },
   {
     "id": "note_036",
     "text": "Live segment leaderboard pop-ups are distracting mid-run",
-    "x": 790,
-    "y": 608,
+    "x": 957,
+    "y": 599,
     "author": "user_5",
-    "color": "yellow"
+    "color": "yellow",
+    "z": 0
   },
   {
     "id": "note_037",
     "text": "Can't hand off the group ride leader role to another rider",
-    "x": 815,
-    "y": 710,
+    "x": 948,
+    "y": 762,
     "author": "user_2",
-    "color": "yellow"
+    "color": "yellow",
+    "z": 0
   },
   {
     "id": "note_038",
     "text": "Live tracking frequently drops for followers",
-    "x": 712,
-    "y": 580,
+    "x": 793,
+    "y": 530,
     "author": "user_9",
-    "color": "yellow"
+    "color": "yellow",
+    "z": 0
   },
   {
     "id": "note_039",
     "text": "Friends can't see new activities without refreshing the feed",
-    "x": 760,
-    "y": 712,
+    "x": 789,
+    "y": 672,
     "author": "user_9",
-    "color": "yellow"
+    "color": "yellow",
+    "z": 0
   },
   {
     "id": "note_040",
     "text": "Notification feed lacks context about why I was tagged",
-    "x": 712,
-    "y": 775,
+    "x": 765,
+    "y": 832,
     "author": "user_7",
-    "color": "yellow"
+    "color": "yellow",
+    "z": 0
   },
   {
     "id": "note_041",
     "text": "Hard to find the right workout template quickly",
-    "x": 540,
-    "y": 395,
+    "x": 503,
+    "y": 184,
     "author": "user_4",
-    "color": "orange"
+    "color": "orange",
+    "z": 0
   },
   {
     "id": "note_042",
     "text": "Workout template search results feel irrelevant",
-    "x": 405,
-    "y": 475,
+    "x": 496,
+    "y": 406,
     "author": "user_6",
-    "color": "orange"
+    "color": "orange",
+    "z": 0
   },
   {
     "id": "note_043",
     "text": "Can't organize routes into custom folders",
-    "x": 505,
-    "y": 400,
+    "x": 341,
+    "y": 263,
     "author": "user_4",
-    "color": "green"
+    "color": "green",
+    "z": 0
   },
   {
     "id": "note_044",
     "text": "Activity naming gets inconsistent across team members",
-    "x": 470,
-    "y": 435,
+    "x": 350,
+    "y": 651,
     "author": "user_9",
-    "color": "green"
+    "color": "green",
+    "z": 0
   },
   {
     "id": "note_045",
     "text": "No bulk rename for multiple activities",
-    "x": 455,
-    "y": 430,
+    "x": 496,
+    "y": 298,
     "author": "user_1",
-    "color": "green"
+    "color": "green",
+    "z": 0
   },
   {
     "id": "note_046",
     "text": "Activity tags are limited — I need finer categorization",
-    "x": 475,
-    "y": 438,
+    "x": 514,
+    "y": 666,
     "author": "user_6",
-    "color": "green"
+    "color": "green",
+    "z": 0
   },
   {
     "id": "note_047",
     "text": "Hard to keep consistent training zones across athletes",
-    "x": 420,
-    "y": 428,
+    "x": 349,
+    "y": 535,
     "author": "user_8",
-    "color": "green"
+    "color": "green",
+    "z": 0
   },
   {
     "id": "note_048",
     "text": "Duplicating a workout loses some of the custom intervals",
-    "x": 385,
-    "y": 412,
+    "x": 646,
+    "y": 455,
     "author": "user_10",
-    "color": "orange"
+    "color": "orange",
+    "z": 0
   },
   {
     "id": "note_049",
     "text": "Need better controls for organizing training plans by week",
-    "x": 465,
-    "y": 490,
+    "x": 342,
+    "y": 385,
     "author": "user_7",
-    "color": "green"
+    "color": "green",
+    "z": 0
   },
   {
     "id": "note_050",
     "text": "Can't lock a planned workout to prevent accidental changes",
-    "x": 525,
-    "y": 472,
+    "x": 502,
+    "y": 515,
     "author": "user_6",
-    "color": "orange"
+    "color": "orange",
+    "z": 0
   }
 ]
