@@ -28,6 +28,9 @@ function validateNote(note, index) {
   if (typeof note.x !== 'number' || typeof note.y !== 'number') {
     return `Note at index ${index} has non-numeric x/y coordinates`;
   }
+  if ('z' in note && typeof note.z !== 'number') {
+    return `Note at index ${index} has non-numeric "z"`;
+  }
   return null;
 }
 
@@ -58,5 +61,5 @@ export async function loadNotes(url) {
     throw new Error(`Schema validation failed:\n${errors.join('\n')}`);
   }
 
-  return data;
+  return data.map((n) => ({ ...n, z: typeof n.z === 'number' ? n.z : 0 }));
 }

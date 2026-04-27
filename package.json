@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vite --open /test.html",
-    "capture-gifs": "node scripts/capture-gifs.mjs"
+    "capture-gifs": "node scripts/capture-gifs.mjs",
+    "resolve-overlaps": "node scripts/resolve-overlaps.mjs"
   },
   "devDependencies": {
     "playwright": "^1.59.1",
