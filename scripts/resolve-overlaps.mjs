@@ -3,8 +3,11 @@
  * Build-time overlap resolver for the sticky-notes dataset.
  *
  * Mirrors the runtime resolver previously in src/canvas-view.js. Bakes the
- * resolved (x, y) into data/sticky_notes.json and ensures every note carries
- * a `z` stacking-order field (default 0, raised by drag-to-front at runtime).
+ * resolved (x, y) into public/data/sticky_notes.json and ensures every note
+ * carries a `z` stacking-order field (default 0, raised by drag-to-front at
+ * runtime). The file lives under public/ so Vite copies it into dist/ for
+ * production builds — fetching `/data/sticky_notes.json` works in dev and
+ * prod alike.
  *
  * Idempotent: re-running on already-resolved data is a no-op.
  *
@@ -22,7 +25,7 @@ const ITERS       = 60;
 const ORIGIN_PULL = 0.08;
 
 const here     = dirname(fileURLToPath(import.meta.url));
-const dataPath = resolve(here, '..', 'data', 'sticky_notes.json');
+const dataPath = resolve(here, '..', 'public', 'data', 'sticky_notes.json');
 
 function resolveOverlaps(notes) {
   const pos    = notes.map((n) => ({ x: n.x, y: n.y }));

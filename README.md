@@ -133,7 +133,7 @@ Open [http://localhost:5173](http://localhost:5173).
 1. **Model discovery and download.** The app detects that MiniLM and FLAN-T5 are not yet cached. It fetches both models (~102 MB total in quantised form) from the Hugging Face CDN.
 2. **Cache Storage write.** Models are written to the browser's Cache Storage API. This cache persists across sessions and is not cleared by regular cache eviction.
 3. **Offline-capable.** After the first run, the app is fully offline. Close the browser, unplug from the network, reopen the page—inference runs at full speed with cached models.
-4. **Data loading.** The sticky notes load from [data/sticky_notes.json](data/sticky_notes.json) on start. The UI is interactive immediately; users can pan and zoom the canvas while models download in the background.
+4. **Data loading.** The sticky notes load from [public/data/sticky_notes.json](public/data/sticky_notes.json) on start. The UI is interactive immediately; users can pan and zoom the canvas while models download in the background.
 
 ### Success criteria — Verify clustering works
 
@@ -150,7 +150,7 @@ After starting the app:
 
 ### Using your own notes
 
-Replace [data/sticky_notes.json](data/sticky_notes.json) with any JSON array matching the schema:
+Replace [public/data/sticky_notes.json](public/data/sticky_notes.json) with any JSON array matching the schema:
 
 ```json
 {
