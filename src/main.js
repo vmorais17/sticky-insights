@@ -1,9 +1,19 @@
 /**
  * main.js — Application entry point.
- * Wires together: data loading → canvas render → clustering → both views.
+ * Wires together: board picker → canvas render → clustering → both views.
+ *
+ * Privacy: note content stays in the browser. With FSA persistence, it also
+ * stays on the user's local disk inside whichever folder they chose; nothing
+ * is uploaded by this app, and any cross-device sync is delegated entirely
+ * to the user's OS-level cloud-drive client.
  */
 
-import { loadNotes } from './loader.js';
+import { loadNotes, validateNotes } from './loader.js';
+import {
+  isSupported as fsSupported,
+  openBoard, createBoard, readBoard, writeBoard,
+  listRecentBoards, forgetBoard,
+} from './board-fs.js';
 import { clusterNotes } from './pipeline.js';
 import { renderCanvas } from './canvas-view.js';
 import { renderClusterView } from './cluster-view.js';
@@ -29,6 +39,14 @@ const progressBar     = document.getElementById('progress-bar');
 const progressLabel   = document.getElementById('progress-label');
 const progressDetail  = document.getElementById('progress-detail');
 
+const boardPicker            = document.getElementById('board-picker');
+const btnContinue            = document.getElementById('btn-continue');
+const continueName           = document.getElementById('continue-name');
+const btnOpen                = document.getElementById('btn-open');
+const btnCreate              = document.getElementById('btn-create');
+const boardPickerError       = document.getElementById('board-picker-error');
+const boardPickerUnsupported = document.getElementById('board-picker-unsupported');
+
 // ─── App state ───────────────────────────────────────────────────
 // Module-scope so showView() can pass current values to renderSemanticView
 // regardless of when the Semantics tab is activated relative to clustering.
@@ -37,6 +55,9 @@ let embeddingsReduced = [];
 let assignments       = [];
 let clusters          = [];
 let clusterViewApi    = null;
+let currentBoard      = null; // { id, handle, name } once a board is opened
+let noteIdToIdx       = new Map(); // rebuilt whenever `notes` is replaced
+let saveTimer         = null;      // debounce handle for writeBoard
 
 // ─── Progress helpers ────────────────────────────────────────────
 function showProgress(label = '', pct = 0) {
@@ -85,6 +106,46 @@ function applyHullVisibility() {
 
 hullToggle.addEventListener('change', applyHullVisibility);
 
+// ─── Drag persistence ─────────────────────────────────────────────
+// Drag updates happen in canvas-view; this module owns the file save.
+// Saves are debounced so a flurry of quick re-positions coalesces into
+// one write per "settle." 300 ms is imperceptible after a mouse-up but
+// long enough that successive drags batch.
+
+const SAVE_DEBOUNCE_MS = 300;
+
+function scheduleSave() {
+  if (!currentBoard) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try {
+      await writeBoard(currentBoard.handle, notes);
+    } catch (err) {
+      // Soft-fail: the user's UI state is the truth in memory; next
+      // interaction will re-prompt for permission if it was revoked.
+      console.error('Save failed:', err);
+    }
+  }, SAVE_DEBOUNCE_MS);
+}
+
+function handleNoteDragEnd(id, { x, y, z }) {
+  const i = noteIdToIdx.get(id);
+  if (i === undefined) return;
+  notes[i].x = x;
+  notes[i].y = y;
+  notes[i].z = z;
+
+  // If hulls are present (post-clustering), recompute by re-rendering.
+  // Without clusters, the in-place transform is already correct — no re-render.
+  if (assignments.length > 0) {
+    const labels = clusters.map((c) => c.label);
+    renderCanvas(canvasContainer, notes, assignments, labels, { onDragEnd: handleNoteDragEnd });
+    applyHullVisibility();
+  }
+
+  scheduleSave();
+}
+
 // ─── Cluster action ───────────────────────────────────────────────
 btnClusterAction.addEventListener('click', async () => {
   if (notes.length === 0) return;
@@ -132,7 +193,7 @@ btnClusterAction.addEventListener('click', async () => {
 
     hideProgress();
 
-    renderCanvas(canvasContainer, notes, assignments, labels);
+    renderCanvas(canvasContainer, notes, assignments, labels, { onDragEnd: handleNoteDragEnd });
     clusterViewApi = renderClusterView(clusterContainer, notes, assignments, clusters);
 
     // Apply hull visibility immediately after render — hull-layer starts hidden
@@ -152,18 +213,102 @@ btnClusterAction.addEventListener('click', async () => {
   }
 });
 
-// ─── Initial load: fetch notes and render canvas immediately ──────
-async function init() {
+// ─── Board picker ─────────────────────────────────────────────────
+function showPickerError(msg) {
+  boardPickerError.textContent = msg;
+  boardPickerError.classList.remove('hidden');
+}
+
+function clearPickerError() {
+  boardPickerError.textContent = '';
+  boardPickerError.classList.add('hidden');
+}
+
+// Loads validated notes into app state and reveals the canvas.
+// Caller has already confirmed read access; data is the parsed JSON contents.
+async function loadBoard({ id, handle, data, name }) {
+  let validated;
   try {
-    notes = await loadNotes('/data/sticky_notes.json');
-    renderCanvas(canvasContainer, notes);
+    validated = validateNotes(data);
   } catch (err) {
-    console.error('Failed to load notes:', err);
-    canvasContainer.innerHTML = `
-      <p style="padding:24px;color:#e11d48;font-size:14px;">
-        Error loading sticky notes: ${err.message}
-      </p>`;
+    // Bad schema — drop the recents entry so we don't keep offering it.
+    if (id) await forgetBoard(id);
+    showPickerError(`Couldn't load that board: ${err.message}`);
+    return;
+  }
+  notes        = validated;
+  noteIdToIdx  = new Map(notes.map((n, i) => [n.id, i]));
+  currentBoard = { id, handle, name };
+  boardPicker.classList.add('hidden');
+  canvasView.classList.remove('hidden');
+  btnClusterAction.disabled = false;
+  renderCanvas(canvasContainer, notes, null, null, { onDragEnd: handleNoteDragEnd });
+}
+
+async function handleContinue(record) {
+  clearPickerError();
+  try {
+    const data = await readBoard(record.handle); // ensurePermission inside
+    await loadBoard({ id: record.id, handle: record.handle, data, name: record.name });
+  } catch (err) {
+    if (err.name === 'NotAllowedError') {
+      showPickerError('Permission was denied. Pick another board?');
+      return;
+    }
+    if (err.name === 'NotFoundError') {
+      await forgetBoard(record.id);
+      btnContinue.classList.add('hidden');
+      showPickerError(`"${record.name}" wasn't found on disk and was removed from recents.`);
+      return;
+    }
+    showPickerError(`Couldn't open "${record.name}": ${err.message}`);
   }
 }
 
-init();
+async function handleOpen() {
+  clearPickerError();
+  try {
+    const result = await openBoard();
+    await loadBoard({ ...result, name: result.handle.name });
+  } catch (err) {
+    if (err.name === 'AbortError') return; // user cancelled the picker
+    showPickerError(`Couldn't open board: ${err.message}`);
+  }
+}
+
+async function handleCreate() {
+  clearPickerError();
+  try {
+    // Seed from the bundled starter dataset (already validated by loadNotes).
+    const starter = await loadNotes('/data/sticky_notes.json');
+    const result  = await createBoard(starter, 'sticky-notes.json');
+    await loadBoard({ ...result, name: result.handle.name });
+  } catch (err) {
+    if (err.name === 'AbortError') return;
+    showPickerError(`Couldn't create board: ${err.message}`);
+  }
+}
+
+btnOpen.addEventListener('click', handleOpen);
+btnCreate.addEventListener('click', handleCreate);
+
+async function setupPicker() {
+  btnClusterAction.disabled = true;
+
+  if (!fsSupported) {
+    boardPickerUnsupported.classList.remove('hidden');
+    btnOpen.disabled   = true;
+    btnCreate.disabled = true;
+    return;
+  }
+
+  const recents = await listRecentBoards();
+  if (recents.length > 0) {
+    const last = recents[0];
+    continueName.textContent = last.name;
+    btnContinue.classList.remove('hidden');
+    btnContinue.onclick = () => handleContinue(last);
+  }
+}
+
+setupPicker();

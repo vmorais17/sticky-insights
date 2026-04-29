@@ -50,8 +50,32 @@
         </div>
       </section>
 
-      <!-- Canvas view (default) -->
-      <section id="canvas-view" class="view">
+      <!-- Board picker (shown until a board is opened) -->
+      <section id="board-picker" class="board-picker">
+        <div class="board-picker-card">
+          <h2 class="board-picker-title">Pick a board</h2>
+          <p class="board-picker-subtitle">
+            Each board is a JSON file on your disk. Save it in your iCloud Drive folder to sync across devices.
+          </p>
+
+          <div class="board-picker-actions">
+            <button id="btn-continue" class="btn-primary hidden" type="button">
+              Continue: <span id="continue-name"></span>
+            </button>
+            <button id="btn-open" class="btn-secondary" type="button">Open existing board…</button>
+            <button id="btn-create" class="btn-secondary" type="button">Create new board…</button>
+          </div>
+
+          <p id="board-picker-error" class="board-picker-error hidden" role="alert"></p>
+          <p id="board-picker-unsupported" class="board-picker-unsupported hidden">
+            Your browser doesn't support the File System Access API.
+            Please use a Chromium-based browser (Chrome, Edge, Brave, or Opera).
+          </p>
+        </div>
+      </section>
+
+      <!-- Canvas view (hidden until board picked) -->
+      <section id="canvas-view" class="view hidden">
         <div id="canvas-container"></div>
       </section>
 
