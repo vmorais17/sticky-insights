@@ -1,19 +1,15 @@
 /**
  * main.js — Application entry point.
- * Wires together: board picker → canvas render → clustering → both views.
+ * Wires together: import → canvas render → clustering → both views.
  *
- * Privacy: note content stays in the browser. With FSA persistence, it also
- * stays on the user's local disk inside whichever folder they chose; nothing
- * is uploaded by this app, and any cross-device sync is delegated entirely
- * to the user's OS-level cloud-drive client.
+ * Privacy: note content stays in the browser. Boards are imported from /
+ * exported to local JSON files; nothing is uploaded by this app, and any
+ * cross-device sync is delegated entirely to the user (e.g., place the
+ * downloaded file in iCloud Drive to share between devices).
  */
 
 import { loadNotes, validateNotes } from './loader.js';
-import {
-  isSupported as fsSupported,
-  openBoard, createBoard, readBoard, writeBoard,
-  listRecentBoards, forgetBoard,
-} from './board-fs.js';
+import { downloadBoard, pickBoardFile } from './board-file.js';
 import { clusterNotes } from './pipeline.js';
 import { renderCanvas } from './canvas-view.js';
 import { renderClusterView } from './cluster-view.js';
@@ -27,6 +23,7 @@ const canvasContainer  = document.getElementById('canvas-container');
 const clusterContainer = document.getElementById('cluster-container');
 
 const btnClusterAction = document.getElementById('btn-cluster-action');
+const btnDownload      = document.getElementById('btn-download');
 const btnCanvas        = document.getElementById('btn-canvas');
 const btnCluster       = document.getElementById('btn-cluster');
 const btnSemantics     = document.getElementById('btn-semantics');
@@ -39,25 +36,20 @@ const progressBar     = document.getElementById('progress-bar');
 const progressLabel   = document.getElementById('progress-label');
 const progressDetail  = document.getElementById('progress-detail');
 
-const boardPicker            = document.getElementById('board-picker');
-const btnContinue            = document.getElementById('btn-continue');
-const continueName           = document.getElementById('continue-name');
-const btnOpen                = document.getElementById('btn-open');
-const btnCreate              = document.getElementById('btn-create');
-const boardPickerError       = document.getElementById('board-picker-error');
-const boardPickerUnsupported = document.getElementById('board-picker-unsupported');
+const boardPicker      = document.getElementById('board-picker');
+const btnImport        = document.getElementById('btn-import');
+const btnStarter       = document.getElementById('btn-starter');
+const boardPickerError = document.getElementById('board-picker-error');
 
 // ─── App state ───────────────────────────────────────────────────
-// Module-scope so showView() can pass current values to renderSemanticView
-// regardless of when the Semantics tab is activated relative to clustering.
 let notes             = [];
 let embeddingsReduced = [];
 let assignments       = [];
 let clusters          = [];
 let clusterViewApi    = null;
-let currentBoard      = null; // { id, handle, name } once a board is opened
-let noteIdToIdx       = new Map(); // rebuilt whenever `notes` is replaced
-let saveTimer         = null;      // debounce handle for writeBoard
+let currentBoardName  = 'board.json'; // suggested filename for download
+let noteIdToIdx       = new Map();    // rebuilt whenever `notes` is replaced
+let dirty             = false;        // true between drag and download
 
 // ─── Progress helpers ────────────────────────────────────────────
 function showProgress(label = '', pct = 0) {
@@ -106,27 +98,25 @@ function applyHullVisibility() {
 
 hullToggle.addEventListener('change', applyHullVisibility);
 
-// ─── Drag persistence ─────────────────────────────────────────────
-// Drag updates happen in canvas-view; this module owns the file save.
-// Saves are debounced so a flurry of quick re-positions coalesces into
-// one write per "settle." 300 ms is imperceptible after a mouse-up but
-// long enough that successive drags batch.
+// ─── Drag → dirty (no auto-save in this app) ──────────────────────
+// Drag updates positions in memory only. Persistence happens when the
+// user clicks Download. The `dirty` flag drives the Download button
+// styling and a beforeunload warning so unsaved changes aren't lost
+// to a stray tab close.
 
-const SAVE_DEBOUNCE_MS = 300;
-
-function scheduleSave() {
-  if (!currentBoard) return;
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(async () => {
-    try {
-      await writeBoard(currentBoard.handle, notes);
-    } catch (err) {
-      // Soft-fail: the user's UI state is the truth in memory; next
-      // interaction will re-prompt for permission if it was revoked.
-      console.error('Save failed:', err);
-    }
-  }, SAVE_DEBOUNCE_MS);
+function setDirty(flag) {
+  if (dirty === flag) return;
+  dirty = flag;
+  btnDownload.classList.toggle('dirty', flag);
 }
+
+window.addEventListener('beforeunload', (e) => {
+  if (!dirty) return;
+  e.preventDefault();
+  // Most browsers ignore this string and show their own generic prompt;
+  // setting returnValue is required for the warning to appear at all.
+  e.returnValue = '';
+});
 
 function handleNoteDragEnd(id, { x, y, z }) {
   const i = noteIdToIdx.get(id);
@@ -135,15 +125,13 @@ function handleNoteDragEnd(id, { x, y, z }) {
   notes[i].y = y;
   notes[i].z = z;
 
-  // If hulls are present (post-clustering), recompute by re-rendering.
-  // Without clusters, the in-place transform is already correct — no re-render.
   if (assignments.length > 0) {
     const labels = clusters.map((c) => c.label);
     renderCanvas(canvasContainer, notes, assignments, labels, { onDragEnd: handleNoteDragEnd });
     applyHullVisibility();
   }
 
-  scheduleSave();
+  setDirty(true);
 }
 
 // ─── Cluster action ───────────────────────────────────────────────
@@ -159,14 +147,11 @@ btnClusterAction.addEventListener('click', async () => {
       await clusterNotes(notes, { onProgress: updateProgress });
     embeddingsReduced = reduced;
 
-    // Adapt ClusterResult[] → format expected by existing renderers.
-    // Regular clusters (cluster_id >= 0) are rendered with sequential colour indices.
-    // The noise group (cluster_id === -1) is appended as an extra group.
     const regularResults = pipelineResults.filter(r => r.cluster_id !== -1);
     const noiseResult    = pipelineResults.find(r => r.cluster_id === -1) ?? null;
 
-    const noteIdToIdx = new Map(notes.map((n, i) => [n.id, i]));
-    assignments = new Array(notes.length).fill(0);
+    const idxOf  = new Map(notes.map((n, i) => [n.id, i]));
+    assignments  = new Array(notes.length).fill(0);
     const labels = [];
     clusters     = [];
 
@@ -174,7 +159,7 @@ btnClusterAction.addEventListener('click', async () => {
       labels.push(r.label);
       clusters.push({ label: r.label, keyphrases: r.keyphrases ?? [], silhouette_score: r.silhouette_score, note_ids: r.note_ids });
       for (const id of r.note_ids) {
-        const i = noteIdToIdx.get(id);
+        const i = idxOf.get(id);
         if (i !== undefined) assignments[i] = colorIdx;
       }
     });
@@ -184,7 +169,7 @@ btnClusterAction.addEventListener('click', async () => {
       labels.push(noiseResult.label);
       clusters.push({ label: noiseResult.label, keyphrases: [], silhouette_score: 0, note_ids: noiseResult.note_ids });
       for (const id of noiseResult.note_ids) {
-        const i = noteIdToIdx.get(id);
+        const i = idxOf.get(id);
         if (i !== undefined) assignments[i] = noiseColorIdx;
       }
     }
@@ -196,8 +181,6 @@ btnClusterAction.addEventListener('click', async () => {
     renderCanvas(canvasContainer, notes, assignments, labels, { onDragEnd: handleNoteDragEnd });
     clusterViewApi = renderClusterView(clusterContainer, notes, assignments, clusters);
 
-    // Apply hull visibility immediately after render — hull-layer starts hidden
-    // because the toggle defaults to OFF. Re-clustering respects current toggle state.
     applyHullVisibility();
 
     viewToggle.classList.remove('hidden');
@@ -213,7 +196,7 @@ btnClusterAction.addEventListener('click', async () => {
   }
 });
 
-// ─── Board picker ─────────────────────────────────────────────────
+// ─── Board picker: import / starter / download ────────────────────
 function showPickerError(msg) {
   boardPickerError.textContent = msg;
   boardPickerError.classList.remove('hidden');
@@ -225,90 +208,54 @@ function clearPickerError() {
 }
 
 // Loads validated notes into app state and reveals the canvas.
-// Caller has already confirmed read access; data is the parsed JSON contents.
-async function loadBoard({ id, handle, data, name }) {
+function loadBoard({ data, name }) {
   let validated;
   try {
     validated = validateNotes(data);
   } catch (err) {
-    // Bad schema — drop the recents entry so we don't keep offering it.
-    if (id) await forgetBoard(id);
     showPickerError(`Couldn't load that board: ${err.message}`);
     return;
   }
-  notes        = validated;
-  noteIdToIdx  = new Map(notes.map((n, i) => [n.id, i]));
-  currentBoard = { id, handle, name };
+  notes            = validated;
+  noteIdToIdx      = new Map(notes.map((n, i) => [n.id, i]));
+  currentBoardName = name;
+  setDirty(false);
   boardPicker.classList.add('hidden');
   canvasView.classList.remove('hidden');
   btnClusterAction.disabled = false;
+  btnDownload.classList.remove('hidden');
   renderCanvas(canvasContainer, notes, null, null, { onDragEnd: handleNoteDragEnd });
 }
 
-async function handleContinue(record) {
+async function handleImport() {
   clearPickerError();
   try {
-    const data = await readBoard(record.handle); // ensurePermission inside
-    await loadBoard({ id: record.id, handle: record.handle, data, name: record.name });
-  } catch (err) {
-    if (err.name === 'NotAllowedError') {
-      showPickerError('Permission was denied. Pick another board?');
-      return;
-    }
-    if (err.name === 'NotFoundError') {
-      await forgetBoard(record.id);
-      btnContinue.classList.add('hidden');
-      showPickerError(`"${record.name}" wasn't found on disk and was removed from recents.`);
-      return;
-    }
-    showPickerError(`Couldn't open "${record.name}": ${err.message}`);
-  }
-}
-
-async function handleOpen() {
-  clearPickerError();
-  try {
-    const result = await openBoard();
-    await loadBoard({ ...result, name: result.handle.name });
+    const { data, name } = await pickBoardFile();
+    loadBoard({ data, name });
   } catch (err) {
     if (err.name === 'AbortError') return; // user cancelled the picker
-    showPickerError(`Couldn't open board: ${err.message}`);
+    showPickerError(`Couldn't import: ${err.message}`);
   }
 }
 
-async function handleCreate() {
+async function handleStartFromStarter() {
   clearPickerError();
   try {
-    // Seed from the bundled starter dataset (already validated by loadNotes).
-    const starter = await loadNotes('/data/sticky_notes.json');
-    const result  = await createBoard(starter, 'sticky-notes.json');
-    await loadBoard({ ...result, name: result.handle.name });
+    const data = await loadNotes('/data/sticky_notes.json');
+    loadBoard({ data, name: 'sticky-notes.json' });
   } catch (err) {
-    if (err.name === 'AbortError') return;
-    showPickerError(`Couldn't create board: ${err.message}`);
+    showPickerError(`Couldn't load starter: ${err.message}`);
   }
 }
 
-btnOpen.addEventListener('click', handleOpen);
-btnCreate.addEventListener('click', handleCreate);
-
-async function setupPicker() {
-  btnClusterAction.disabled = true;
-
-  if (!fsSupported) {
-    boardPickerUnsupported.classList.remove('hidden');
-    btnOpen.disabled   = true;
-    btnCreate.disabled = true;
-    return;
-  }
-
-  const recents = await listRecentBoards();
-  if (recents.length > 0) {
-    const last = recents[0];
-    continueName.textContent = last.name;
-    btnContinue.classList.remove('hidden');
-    btnContinue.onclick = () => handleContinue(last);
-  }
+function handleDownload() {
+  if (notes.length === 0) return;
+  downloadBoard(notes, currentBoardName);
+  setDirty(false);
 }
 
-setupPicker();
+btnImport.addEventListener('click', handleImport);
+btnStarter.addEventListener('click', handleStartFromStarter);
+btnDownload.addEventListener('click', handleDownload);
+
+btnClusterAction.disabled = true;

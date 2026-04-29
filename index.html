@@ -34,6 +34,7 @@
             <span class="pill-track"><span class="pill-knob"></span></span>
           </label>
         </div>
+        <button id="btn-download" class="btn-secondary hidden" type="button" title="Download the current board as a JSON file">Download</button>
         <button id="btn-cluster-action" class="btn-primary">Find Themes</button>
       </div>
     </header>
@@ -55,22 +56,15 @@
         <div class="board-picker-card">
           <h2 class="board-picker-title">Pick a board</h2>
           <p class="board-picker-subtitle">
-            Each board is a JSON file on your disk. Save it in your iCloud Drive folder to sync across devices.
+            Each board is a JSON file. Edit on the canvas, then click <strong>Download</strong> to save your changes. To sync across devices, drop the file in iCloud Drive (or any cloud-synced folder).
           </p>
 
           <div class="board-picker-actions">
-            <button id="btn-continue" class="btn-primary hidden" type="button">
-              Continue: <span id="continue-name"></span>
-            </button>
-            <button id="btn-open" class="btn-secondary" type="button">Open existing board…</button>
-            <button id="btn-create" class="btn-secondary" type="button">Create new board…</button>
+            <button id="btn-import" class="btn-primary" type="button">Import board…</button>
+            <button id="btn-starter" class="btn-secondary" type="button">Start from starter dataset</button>
           </div>
 
           <p id="board-picker-error" class="board-picker-error hidden" role="alert"></p>
-          <p id="board-picker-unsupported" class="board-picker-unsupported hidden">
-            Your browser doesn't support the File System Access API.
-            Please use a Chromium-based browser (Chrome, Edge, Brave, or Opera).
-          </p>
         </div>
       </section>
 

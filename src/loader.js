@@ -37,8 +37,8 @@ function validateNote(note, index) {
 /**
  * Validates an already-parsed value against the sticky notes schema and
  * returns the normalised array (with `z` defaulted to 0). Throws on any
- * validation failure. Used both by loadNotes (URL fetch) and by the FSA
- * board picker, which receives parsed JSON directly from disk.
+ * validation failure. Used both by loadNotes (URL fetch) and by the import
+ * picker, which receives parsed JSON directly from a user-selected file.
  *
  * @param {unknown} data
  * @returns {Array} validated, z-defaulted notes
