@@ -318,6 +318,84 @@ body {
   border: 1.5px solid rgba(0,0,0,0.2);
 }
 
+/* ─── Sticky toolbar (color + delete + palette swatches) ───────── */
+.sticky-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none; /* let drag/dblclick fall through when hidden */
+}
+
+/* Reveal on hover; stay revealed while in palette mode regardless of hover. */
+.sticky:hover .sticky-toolbar,
+.sticky-toolbar[data-mode="palette"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sticky[data-editing="true"] .sticky-toolbar {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.sticky-tb-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0, 0, 0, 0.20);
+  background: white;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.55);
+  transition: transform 0.1s, border-color 0.1s, color 0.1s;
+}
+
+.sticky-tb-btn:hover { transform: scale(1.1); border-color: rgba(0, 0, 0, 0.45); }
+.sticky-tb-btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+
+.sticky-tb-delete:hover { color: #b91c1c; border-color: #b91c1c; } /* 5.9:1 on white */
+
+/* Default mode: color + delete shown, swatches hidden. */
+.sticky-toolbar[data-mode="default"] .sticky-tb-swatch { display: none; }
+
+/* Palette mode: swatches shown, color/delete hidden. */
+.sticky-toolbar[data-mode="palette"] .sticky-tb-color,
+.sticky-toolbar[data-mode="palette"] .sticky-tb-delete { display: none; }
+
+.sticky-tb-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0, 0, 0, 0.20);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: transform 0.1s, border-color 0.1s;
+}
+
+.sticky-tb-swatch:hover { transform: scale(1.15); border-color: rgba(0, 0, 0, 0.50); }
+
+/* Editing: outline the text body and let it scroll if needed. */
+.sticky[data-editing="true"] .sticky-text {
+  cursor: text;
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+  border-radius: 4px;
+  /* Override the inline centering so the caret behaves predictably. */
+  text-align: left !important;
+  align-items: flex-start !important;
+  overflow: auto !important;
+}
+
+.sticky-text:focus { outline: 2px solid var(--color-primary); outline-offset: -2px; }
+
 /* ─── Cluster tooltip ──────────────────────────────────────────── */
 .cluster-tooltip {
   position: absolute;

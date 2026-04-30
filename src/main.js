@@ -98,11 +98,13 @@ function applyHullVisibility() {
 
 hullToggle.addEventListener('change', applyHullVisibility);
 
-// ─── Drag → dirty (no auto-save in this app) ──────────────────────
-// Drag updates positions in memory only. Persistence happens when the
-// user clicks Download. The `dirty` flag drives the Download button
-// styling and a beforeunload warning so unsaved changes aren't lost
-// to a stray tab close.
+// ─── Edit & drag → dirty (no auto-save in this app) ──────────────
+// All canvas mutations (drag, text edit, color change, add, delete)
+// run through these handlers, mark the board `dirty`, and re-render
+// when needed. Persistence happens when the user clicks Download.
+// The `dirty` flag drives the Download button styling and a
+// beforeunload warning so unsaved changes aren't lost to a stray
+// tab close.
 
 function setDirty(flag) {
   if (dirty === flag) return;
@@ -118,20 +120,94 @@ window.addEventListener('beforeunload', (e) => {
   e.returnValue = '';
 });
 
+// Single source of truth for renderCanvas options. Pass `extra` to
+// override or extend (e.g. autoEditNoteId after a fresh create).
+function renderOptions(extra = {}) {
+  return {
+    onDragEnd:         handleNoteDragEnd,
+    onNoteEdit:        handleNoteEdit,
+    onNoteDelete:      handleNoteDelete,
+    onNoteColorChange: handleNoteColorChange,
+    onNoteCreate:      handleNoteCreate,
+    ...extra,
+  };
+}
+
+function reRenderCanvas(extra = {}) {
+  if (assignments.length > 0) {
+    const labels = clusters.map((c) => c.label);
+    renderCanvas(canvasContainer, notes, assignments, labels, renderOptions(extra));
+    applyHullVisibility();
+  } else {
+    renderCanvas(canvasContainer, notes, null, null, renderOptions(extra));
+  }
+}
+
+// Drops cluster state. Adding/deleting notes shifts indices, which would
+// misalign assignments[i] with notes[i] and stale the embeddings cache.
+function invalidateClustering() {
+  if (assignments.length === 0) return;
+  assignments       = [];
+  clusters          = [];
+  embeddingsReduced = [];
+  invalidateSemanticView();
+  viewToggle.classList.add('hidden');
+  hullToggleWrap.classList.add('hidden');
+  showView('canvas');
+}
+
 function handleNoteDragEnd(id, { x, y, z }) {
   const i = noteIdToIdx.get(id);
   if (i === undefined) return;
   notes[i].x = x;
   notes[i].y = y;
   notes[i].z = z;
-
-  if (assignments.length > 0) {
-    const labels = clusters.map((c) => c.label);
-    renderCanvas(canvasContainer, notes, assignments, labels, { onDragEnd: handleNoteDragEnd });
-    applyHullVisibility();
-  }
-
+  // If hulls are present, re-render to recompute around the new position.
+  if (assignments.length > 0) reRenderCanvas();
   setDirty(true);
+}
+
+function handleNoteEdit(id, newText) {
+  const i = noteIdToIdx.get(id);
+  if (i === undefined) return;
+  notes[i].text = newText;
+  setDirty(true);
+  // Text changes don't shift indices — assignments stay structurally valid.
+  // Embeddings are stale though; the user can re-cluster for updated themes.
+}
+
+function handleNoteColorChange(id, color) {
+  const i = noteIdToIdx.get(id);
+  if (i === undefined) return;
+  notes[i].color = color;
+  setDirty(true);
+  reRenderCanvas();
+}
+
+function handleNoteDelete(id) {
+  const i = noteIdToIdx.get(id);
+  if (i === undefined) return;
+  notes.splice(i, 1);
+  noteIdToIdx = new Map(notes.map((n, idx) => [n.id, idx]));
+  invalidateClustering();
+  setDirty(true);
+  reRenderCanvas();
+}
+
+function handleNoteCreate({ x, y }) {
+  const newNote = {
+    id:     `note_${crypto.randomUUID().slice(0, 8)}`,
+    text:   'New note',
+    x, y,
+    author: 'you',
+    color:  'yellow',
+    z:      notes.reduce((m, n) => (n.z > m ? n.z : m), 0) + 1,
+  };
+  notes.push(newNote);
+  noteIdToIdx.set(newNote.id, notes.length - 1);
+  invalidateClustering();
+  setDirty(true);
+  reRenderCanvas({ autoEditNoteId: newNote.id });
 }
 
 // ─── Cluster action ───────────────────────────────────────────────
@@ -178,7 +254,7 @@ btnClusterAction.addEventListener('click', async () => {
 
     hideProgress();
 
-    renderCanvas(canvasContainer, notes, assignments, labels, { onDragEnd: handleNoteDragEnd });
+    renderCanvas(canvasContainer, notes, assignments, labels, renderOptions());
     clusterViewApi = renderClusterView(clusterContainer, notes, assignments, clusters);
 
     applyHullVisibility();
@@ -224,7 +300,7 @@ function loadBoard({ data, name }) {
   canvasView.classList.remove('hidden');
   btnClusterAction.disabled = false;
   btnDownload.classList.remove('hidden');
-  renderCanvas(canvasContainer, notes, null, null, { onDragEnd: handleNoteDragEnd });
+  renderCanvas(canvasContainer, notes, null, null, renderOptions());
 }
 
 async function handleImport() {
