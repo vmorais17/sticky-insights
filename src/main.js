@@ -76,7 +76,10 @@ function showView(name) {
   btnCanvas.classList.toggle('active', name === 'canvas');
   btnCluster.classList.toggle('active', name === 'cluster');
   btnSemantics.classList.toggle('active', name === 'semantics');
-  hullToggleWrap.classList.toggle('hidden', name !== 'canvas');
+  // Hull toggle is only meaningful on the canvas AND only when clusters exist;
+  // without that second guard, invalidateClustering()'s showView('canvas') call
+  // would un-hide the toggle right after we hid it.
+  hullToggleWrap.classList.toggle('hidden', name !== 'canvas' || assignments.length === 0);
 
   if (name === 'semantics') {
     renderSemanticView(semanticView, notes, embeddingsReduced, assignments, clusters, {
@@ -189,7 +192,18 @@ function handleNoteDelete(id) {
   if (i === undefined) return;
   notes.splice(i, 1);
   noteIdToIdx = new Map(notes.map((n, idx) => [n.id, idx]));
-  invalidateClustering();
+
+  // Removing one note doesn't invalidate the others' assignments, so keep
+  // the clusters and just splice the deleted row out of every parallel array.
+  if (assignments.length > 0) {
+    assignments.splice(i, 1);
+    if (embeddingsReduced.length > 0) embeddingsReduced.splice(i, 1);
+    clusters.forEach((c) => { c.note_ids = c.note_ids.filter((nid) => nid !== id); });
+    invalidateSemanticView();
+    // Refresh the cluster view too — its tiles read note_ids and look up notes by id.
+    clusterViewApi = renderClusterView(clusterContainer, notes, assignments, clusters);
+  }
+
   setDirty(true);
   reRenderCanvas();
 }
