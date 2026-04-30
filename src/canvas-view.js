@@ -4,7 +4,13 @@
  * Notes render at the coordinates carried in the JSON. Overlap resolution is a
  * build-time step (scripts/resolve-overlaps.mjs); the runtime trusts the data.
  * After clustering, a cluster-color border + dot identifies each group.
- * Hover reveals the author name.
+ *
+ * Editing affordances (all opt-in via callbacks on renderCanvas options):
+ *   • Hover a note → top-left toolbar with [color] [×]
+ *   • Click [color] → swatches replace the toolbar inline; pick to recolor
+ *   • Click [×] → delete
+ *   • Double-click text → edit; Enter or blur commits, Esc reverts
+ *   • Double-click empty canvas → create note at click position
  */
 
 import * as d3 from 'd3';
@@ -102,12 +108,29 @@ export function expandHull(hull, pad) {
  * @param {Array} notes                raw note objects
  * @param {number[]|null} assignments  cluster index per note, or null if not yet clustered
  * @param {string[]|null} labels       cluster label per cluster index
- * @param {{ onDragEnd?: (id: string, coords: {x:number, y:number, z:number}) => void }} [options]
- *        If `onDragEnd` is provided, notes become draggable; the callback fires
- *        on each drag-release with the new integer coords and incremented z.
+ * @param {object} [options]
+ * @param {(id: string, coords: {x:number, y:number, z:number}) => void} [options.onDragEnd]
+ *        Notes become draggable; fires on each drag-release with new int coords + bumped z.
+ * @param {(id: string, newText: string) => void} [options.onNoteEdit]
+ *        Notes get a dblclick-to-edit affordance; fires on commit (blur / Enter).
+ * @param {(id: string) => void} [options.onNoteDelete]
+ *        Hover toolbar shows × button; fires on click.
+ * @param {(id: string, color: string) => void} [options.onNoteColorChange]
+ *        Hover toolbar shows palette button; fires on swatch click.
+ * @param {(coords: {x:number, y:number}) => void} [options.onNoteCreate]
+ *        Double-click on empty canvas fires this with the local SVG coords.
+ * @param {string} [options.autoEditNoteId]
+ *        After rendering, enter edit mode for the note with this id (used after create).
  */
 export function renderCanvas(container, notes, assignments = null, labels = null, options = {}) {
-  const { onDragEnd } = options;
+  const {
+    onDragEnd,
+    onNoteEdit,
+    onNoteDelete,
+    onNoteColorChange,
+    onNoteCreate,
+    autoEditNoteId,
+  } = options;
   const pos = notes.map((n) => ({ x: n.x, y: n.y }));
 
   const xs   = pos.map((p) => p.x);
@@ -159,7 +182,9 @@ export function renderCanvas(container, notes, assignments = null, labels = null
     .attr('stroke', (_, i) => assignments ? clusterColor(assignments[i]) : 'none')
     .attr('stroke-width', 2.5);
 
-  // Note text — centered vertically and horizontally within the sticky
+  // Note text — centered vertically and horizontally within the sticky.
+  // The inner div carries the `sticky-text` class so the edit handler below
+  // can select it; existing inline styles remain unchanged.
   noteGroups
     .append('foreignObject')
     .attr('x', 14)
@@ -167,6 +192,7 @@ export function renderCanvas(container, notes, assignments = null, labels = null
     .attr('width', NOTE_W - 28)
     .attr('height', NOTE_H - 38)
     .append('xhtml:div')
+    .attr('class', 'sticky-text')
     .style('display', 'flex')
     .style('align-items', 'center')
     .style('justify-content', 'center')
@@ -260,6 +286,132 @@ export function renderCanvas(container, notes, assignments = null, labels = null
       .attr('stroke-width', 1.5);
   }
 
+  // ── Editing affordances ─────────────────────────────────────────────────────
+  // Hover toolbar (color + delete), in-place text edit on dblclick, and
+  // dblclick-on-empty-canvas to create a new note. Each is opt-in via callback.
+
+  const COLOR_KEYS = ['yellow', 'pink', 'blue', 'green', 'purple', 'orange', 'white'];
+
+  if (onNoteColorChange || onNoteDelete) {
+    // Toolbar foreignObject — appended after cluster dot so it paints on top.
+    const toolbar = noteGroups
+      .append('foreignObject')
+      .attr('x', 8)
+      .attr('y', 6)
+      .attr('width', NOTE_W - 16)
+      .attr('height', 24)
+      .style('overflow', 'visible');
+
+    const toolbarDiv = toolbar.append('xhtml:div')
+      .attr('class', 'sticky-toolbar')
+      .attr('data-mode', 'default');
+
+    if (typeof onNoteColorChange === 'function') {
+      toolbarDiv.append('xhtml:button')
+        .attr('class', 'sticky-tb-btn sticky-tb-color')
+        .attr('type', 'button')
+        .attr('aria-label', 'Change color')
+        .style('background', (d) => STICKY_COLORS[d.color] ?? STICKY_COLORS.default)
+        .on('mousedown', function (event) { event.stopPropagation(); })
+        .on('click', function (event) {
+          event.stopPropagation();
+          const tb = this.parentNode;
+          tb.dataset.mode = tb.dataset.mode === 'palette' ? 'default' : 'palette';
+        });
+
+      COLOR_KEYS.forEach((colorKey) => {
+        toolbarDiv.append('xhtml:button')
+          .attr('class', 'sticky-tb-btn sticky-tb-swatch')
+          .attr('type', 'button')
+          .attr('aria-label', `Set color to ${colorKey}`)
+          .attr('data-color', colorKey)
+          .style('background', STICKY_COLORS[colorKey])
+          .on('mousedown', function (event) { event.stopPropagation(); })
+          .on('click', function (event, d) {
+            event.stopPropagation();
+            this.parentNode.dataset.mode = 'default';
+            onNoteColorChange(d.id, colorKey);
+          });
+      });
+    }
+
+    if (typeof onNoteDelete === 'function') {
+      toolbarDiv.append('xhtml:button')
+        .attr('class', 'sticky-tb-btn sticky-tb-delete')
+        .attr('type', 'button')
+        .attr('aria-label', 'Delete note')
+        .text('×')
+        .on('mousedown', function (event) { event.stopPropagation(); })
+        .on('click', function (event, d) {
+          event.stopPropagation();
+          onNoteDelete(d.id);
+        });
+    }
+
+    // Collapse palette when the user moves off the note.
+    noteGroups.on('mouseleave.toolbar', function () {
+      const tb = this.querySelector('.sticky-toolbar');
+      if (tb && tb.dataset.mode === 'palette') tb.dataset.mode = 'default';
+    });
+  }
+
+  // Text edit on double-click of the text body.
+  function enterEditMode(textEl, d) {
+    const noteG = textEl.closest('g.sticky');
+    if (!noteG) return;
+    noteG.dataset.editing = 'true';
+    textEl.contentEditable = 'plaintext-only';
+    textEl.focus();
+
+    const range = document.createRange();
+    range.selectNodeContents(textEl);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    const oldText = d.text;
+    const cleanup = () => {
+      textEl.contentEditable = 'false';
+      noteG.dataset.editing = 'false';
+      textEl.removeEventListener('blur', onBlur);
+      textEl.removeEventListener('keydown', onKeydown);
+    };
+    const commit = () => {
+      const newText = textEl.textContent.trim();
+      cleanup();
+      if (!newText) { textEl.textContent = oldText; return; }
+      if (newText !== oldText) onNoteEdit(d.id, newText);
+    };
+    const cancel = () => { cleanup(); textEl.textContent = oldText; };
+
+    const onBlur = () => commit();
+    const onKeydown = (e) => {
+      if (e.key === 'Escape')         { e.preventDefault(); cancel(); textEl.blur(); }
+      else if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commit(); textEl.blur(); }
+    };
+    textEl.addEventListener('blur', onBlur);
+    textEl.addEventListener('keydown', onKeydown);
+  }
+
+  if (typeof onNoteEdit === 'function') {
+    noteGroups.select('.sticky-text').on('dblclick', function (event, d) {
+      event.stopPropagation();
+      enterEditMode(this, d);
+    });
+  }
+
+  // Double-click on empty canvas → create a new note centred on the click.
+  if (typeof onNoteCreate === 'function') {
+    svg.on('dblclick', function (event) {
+      if (event.target.closest('g.sticky')) return;
+      const [sx, sy] = d3.pointer(event, g.node());
+      onNoteCreate({
+        x: Math.round(sx - NOTE_W / 2),
+        y: Math.round(sy - NOTE_H / 2),
+      });
+    });
+  }
+
   // ── Z-stack ordering & drag ──────────────────────────────────────────────────
   // Reorder note groups by z so a higher z paints on top of lower-z siblings.
   // The data array order is unchanged — assignments[i] still aligns with notes[i].
@@ -269,6 +421,13 @@ export function renderCanvas(container, notes, assignments = null, labels = null
     let didMove = false;
 
     const drag = d3.drag()
+      .filter(function (event) {
+        // Don't start a drag while the user is editing this note's text,
+        // or when the pointer-down lands on the toolbar buttons.
+        if (this.dataset.editing === 'true') return false;
+        if (event.target.closest('.sticky-toolbar')) return false;
+        return event.button === 0;
+      })
       .on('start', function () {
         didMove = false;
         d3.select(this).raise().style('cursor', 'grabbing');
@@ -366,6 +525,16 @@ export function renderCanvas(container, notes, assignments = null, labels = null
           .attr('transform', scaleOut)
           .attr('fill-opacity', 0.07)
           .attr('stroke-opacity', 0.30);
+    });
+  }
+
+  // Auto-enter edit mode for a freshly-created note. requestAnimationFrame
+  // gives the browser one paint to settle the foreignObject before focus.
+  if (autoEditNoteId && typeof onNoteEdit === 'function') {
+    noteGroups.each(function (d) {
+      if (d.id !== autoEditNoteId) return;
+      const textEl = this.querySelector('.sticky-text');
+      if (textEl) requestAnimationFrame(() => enterEditMode(textEl, d));
     });
   }
 }
