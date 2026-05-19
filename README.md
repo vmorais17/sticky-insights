@@ -1,5 +1,7 @@
 # Sticky Insights
 
+**Live demo → [stickyinsights.vercel.app](https://stickyinsights.vercel.app/)**
+
 ## The Problem
 
 **How do you extract insights from user research without sending notes to the cloud?**
