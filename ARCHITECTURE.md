@@ -1,4 +1,4 @@
-# Architecture — Local Semantic Canvas
+# Architecture — Sticky Insights
 
 An experiment in on-device ML: a full clustering and labelling pipeline running entirely in the browser, under the constraint that no user content ever leaves the tab.
 
@@ -170,8 +170,8 @@ These numbers are not compared to supervised labels (we don't have ground truth 
 
 ### Comparison to hosted alternatives
 
-| Dimension | Local Semantic Canvas | Dovetail / UserTesting / Maze |
-|-----------|----------------------|-------------------------------|
+| Dimension | Sticky Insights | Dovetail / UserTesting / Maze |
+|-----------|-----------------|-------------------------------|
 | **Privacy** | Full; no network boundary | Partial; data sent to service |
 | **Latency** | ~40s cold (model download), ~2s warm | 1–10s (API round-trip) |
 | **Offline capability** | Full, after first run | No |
@@ -182,7 +182,7 @@ These numbers are not compared to supervised labels (we don't have ground truth 
 | **Label quality** | ~5–8 of 10 pass validation | Likely higher; human-in-loop |
 
 **When to use each:**
-- **Local Semantic Canvas:** Sensitive data, regulated domains, air-gapped environments, cost-conscious teams, academic research.
+- **Sticky Insights:** Sensitive data, regulated domains, air-gapped environments, cost-conscious teams, academic research.
 - **Hosted alternatives:** Fast iteration, domain-specific models, human-in-loop validation, need for incremental clustering, customer support.
 
 ---

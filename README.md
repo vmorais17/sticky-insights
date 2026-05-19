@@ -1,4 +1,4 @@
-# Local Semantic Canvas
+# Sticky Insights
 
 ## The Problem
 

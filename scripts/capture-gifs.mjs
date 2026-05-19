@@ -294,6 +294,14 @@ async function main() {
     // Start the timer *immediately* after navigation, not at launch. Playwright's
     // recordVideo begins on page load; anchor our marks to the same moment.
     await page.goto(URL, { waitUntil: 'networkidle' });
+
+    // Dismiss the board picker by loading the starter dataset. Scenes assume the
+    // canvas view is already mounted and #btn-cluster-action ("Find Themes") is
+    // visible — neither holds true on the empty board picker landing.
+    await page.locator('#btn-starter').click();
+    await page.locator('#canvas-view').waitFor({ state: 'visible' });
+    await page.waitForTimeout(300);
+
     timer.startRecording();
 
     await drive(page, timer);
