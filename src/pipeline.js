@@ -56,7 +56,7 @@ async function getMiniLM(progressCb) {
   return _miniLM;
 }
 
-async function getFlanT5(progressCb) {
+export async function getFlanT5(progressCb) {
   if (_flanT5) return _flanT5;
   _flanT5 = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-248M', {
     progress_callback: progressCb,
@@ -803,6 +803,50 @@ function silhouette(embeddings, assignments, k) {
 }
 
 /**
+ * Per-note silhouette — same math as silhouette() but returns one score
+ * per note instead of per cluster or the overall mean.  Use this to surface
+ * individual notes that the algorithm placed ambiguously.
+ *
+ * @param {number[][]} embeddings
+ * @param {number[]} assignments
+ * @param {number} k
+ * @returns {number[]} per-note silhouette, index = note index
+ */
+export function silhouettePerNote(embeddings, assignments, k) {
+  const n = embeddings.length;
+  if (k <= 1 || n <= k) return new Array(n).fill(0);
+
+  const groups = Array.from({ length: k }, () => []);
+  assignments.forEach((c, i) => groups[c].push(i));
+
+  const scores = new Array(n).fill(0);
+
+  for (let i = 0; i < n; i++) {
+    const ci = assignments[i];
+    const same = groups[ci];
+    if (same.length === 1) continue;
+
+    let a = 0;
+    for (const j of same) if (j !== i) a += cosineDistance(embeddings[i], embeddings[j]);
+    a /= same.length - 1;
+
+    let b = Infinity;
+    for (let c = 0; c < k; c++) {
+      if (c === ci || groups[c].length === 0) continue;
+      let mean = 0;
+      for (const j of groups[c]) mean += cosineDistance(embeddings[i], embeddings[j]);
+      mean /= groups[c].length;
+      if (mean < b) b = mean;
+    }
+
+    if (!isFinite(b)) continue;
+    scores[i] = (b - a) / Math.max(a, b);
+  }
+
+  return scores;
+}
+
+/**
  * Per-cluster silhouette — same math as silhouette() but returns one score
  * per cluster instead of the overall mean.  Use this to diagnose which
  * clusters are poorly separated without recomputing distances.
@@ -1193,7 +1237,13 @@ export async function clusterNotes(notes, options = {}) {
     }
 
     await report('Naming your insights...', 100);
-    return { results, embeddingsReduced };
+    // Small-board path: each note is its own cluster, silhouette is undefined
+    return {
+      results,
+      embeddingsReduced,
+      perNoteSilhouette: new Array(notes.length).fill(0),
+      centroids: embeddings,
+    };
   }
 
   // For small boards (n ≤ AGGLOMERATIVE_MAX_N): run both algorithms and pick
@@ -1235,6 +1285,9 @@ export async function clusterNotes(notes, options = {}) {
   // Per-cluster silhouette diagnostic — tells you which clusters are poorly
   // separated without requiring a second pass over the data.
   const perCluster = silhouettePerCluster(embeddingsReduced, winner.assignments, winner.k);
+  // Per-note silhouette — used by the reactive agent to identify outlier notes
+  // whose placement was ambiguous (s < 0.05 signals low algorithmic confidence).
+  const perNoteSilhouette = silhouettePerNote(embeddingsReduced, winner.assignments, winner.k);
   console.log('[pipeline] per-cluster silhouette (id: score, size):',
     perCluster.map((s, ci) => {
       const size = winner.assignments.filter(a => a === ci).length;
@@ -1332,6 +1385,10 @@ export async function clusterNotes(notes, options = {}) {
 
   await report('Naming your insights...', 100);
 
+  // clusterCentroids: full-dim L2-normalised centroids built in Stage 3.
+  // Exposed in the return so the reactive agent can compute centroid cosine
+  // similarity for merge suggestions without re-embedding.
+
   // ── Cross-cluster uniqueness gate (E3) ─────────────────────────────────
   // Two clusters with cosine similarity ≥ 0.85 between their labels would
   // appear nearly identical in the UI. When a collision is detected, the
@@ -1361,5 +1418,5 @@ export async function clusterNotes(notes, options = {}) {
     }
   }
 
-  return { results, embeddingsReduced };
+  return { results, embeddingsReduced, perNoteSilhouette, centroids: clusterCentroids };
 }

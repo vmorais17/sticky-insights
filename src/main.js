@@ -10,10 +10,12 @@
 
 import { loadNotes, validateNotes } from './loader.js';
 import { downloadBoard, pickBoardFile } from './board-file.js';
-import { clusterNotes } from './pipeline.js';
+import { clusterNotes, getFlanT5 } from './pipeline.js';
 import { renderCanvas } from './canvas-view.js';
 import { renderClusterView } from './cluster-view.js';
 import { renderSemanticView, invalidateSemanticView } from './semantic-view.js';
+import { computeInsights } from './insights-agent.js';
+import { runReActLoop } from './agent/react.js';
 
 // ─── Element refs ────────────────────────────────────────────────
 const canvasView       = document.getElementById('canvas-view');
@@ -219,8 +221,12 @@ btnClusterAction.addEventListener('click', async () => {
 
   try {
     // All inference runs in the browser — no note text ever leaves the tab
-    const { results: pipelineResults, embeddingsReduced: reduced } =
-      await clusterNotes(notes, { onProgress: updateProgress });
+    const {
+      results: pipelineResults,
+      embeddingsReduced: reduced,
+      perNoteSilhouette,
+      centroids,
+    } = await clusterNotes(notes, { onProgress: updateProgress });
     embeddingsReduced = reduced;
 
     const regularResults = pipelineResults.filter(r => r.cluster_id !== -1);
@@ -250,18 +256,34 @@ btnClusterAction.addEventListener('click', async () => {
       }
     }
 
-    invalidateSemanticView();
+    // ── Level 1: Reactive agent (synchronous, runs before rendering) ──────
+    const insights = computeInsights(notes, clusters, assignments, perNoteSilhouette, centroids);
 
+    invalidateSemanticView();
     hideProgress();
 
     renderCanvas(canvasContainer, notes, assignments, labels, renderOptions());
-    clusterViewApi = renderClusterView(clusterContainer, notes, assignments, clusters);
+    clusterViewApi = renderClusterView(clusterContainer, notes, assignments, clusters, { insights });
 
     applyHullVisibility();
-
     viewToggle.classList.remove('hidden');
     hullToggleWrap.classList.remove('hidden');
-    showView('canvas');
+    showView('cluster');
+
+    // ── Level 3: ReAct agent (async, streams to Agent Activity panel) ─────
+    // FLAN-T5 is already loaded from Stage 4 — getFlanT5() returns immediately.
+    const flanT5 = await getFlanT5().catch(() => null);
+    runReActLoop(
+      insights.rankedClusters,
+      notes,
+      (step) => clusterViewApi?.addAgentStep(step),
+      flanT5,
+      insights,
+    ).then(({ markdownReport }) => {
+      clusterViewApi?.activateDownload(markdownReport, 'sticky-insights-report.md');
+    }).catch(err => {
+      console.warn('[agent] ReAct loop error:', err);
+    });
 
   } catch (err) {
     hideProgress();

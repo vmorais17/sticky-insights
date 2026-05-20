@@ -427,23 +427,7 @@ body {
   overflow: hidden;
 }
 
-/* ── Summary grid ───────────────────────────────────────────────── */
-.cv-grid {
-  flex: 1 1 auto;
-  padding: 28px;
-  overflow-y: auto;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  grid-auto-rows: min-content;
-  gap: 16px;
-  align-content: start;
-}
-
-/* Shrink grid when panel is open */
-#cluster-container:has(.cv-panel--open) .cv-grid {
-  flex: 0 0 auto;
-  width: 55%;
-}
+/* ── Summary grid (sizing now delegated to .cv-left-col) ─────────── */
 
 .cv-tile {
   background: white;
@@ -931,6 +915,436 @@ body {
 .btn-secondary.dirty {
   border-color: var(--color-primary);
   color: var(--color-primary);
+}
+
+/* ─── Cluster view: left column wrapper ────────────────────────── */
+.cv-left-col {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Shrink left col when detail panel is open */
+#cluster-container:has(.cv-panel--open) .cv-left-col {
+  flex: 0 0 55%;
+  max-width: 55%;
+}
+
+/* Grid must not have its own flex sizing now that it lives inside cv-left-col */
+.cv-grid {
+  padding: 20px 28px 28px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-auto-rows: min-content;
+  gap: 16px;
+  align-content: start;
+}
+
+/* ─── Level 1: Board summary banner ────────────────────────────── */
+.cv-board-summary {
+  margin: 20px 28px 0;
+  padding: 14px 18px;
+  background: #eef2ff;
+  border-left: 4px solid var(--color-primary);
+  border-radius: 0 8px 8px 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #1a1a1a;
+  flex-shrink: 0;
+}
+
+/* ─── Level 1: Merge suggestion cards ──────────────────────────── */
+.cv-merge-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 28px 0;
+  flex-shrink: 0;
+}
+
+.cv-merge-card {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  padding: 12px 14px;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.cv-merge-card-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.cv-merge-icon {
+  font-size: 18px;
+  font-weight: 700;
+  color: #b45309;
+  flex-shrink: 0;
+  margin-top: 1px;
+  line-height: 1;
+}
+
+.cv-merge-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cv-merge-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.cv-merge-clusters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.cv-merge-cluster-tag {
+  font-size: 11px;
+  font-weight: 600;
+  border: 1.5px solid;
+  border-radius: 20px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.cv-merge-meta {
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.cv-merge-sep {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.cv-merge-similarity {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.cv-merge-dismiss {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  padding: 2px 4px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.cv-merge-dismiss:hover { color: var(--color-text); background: rgba(0,0,0,0.06); }
+.cv-merge-dismiss:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+
+/* ─── Level 1: Rank badge ───────────────────────────────────────── */
+.cv-rank-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-bg);
+  border: 1.5px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* Tile needs relative positioning for the badge */
+.cv-tile {
+  position: relative;
+}
+
+/* ─── Level 1: Needs Review section ────────────────────────────── */
+.cv-needs-review {
+  margin: 0 28px 28px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+  flex-shrink: 0;
+}
+
+.cv-needs-review-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #fef2f2;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  border-bottom: 1px solid #fecaca;
+}
+
+.cv-needs-review-header:hover { background: #fee2e2; }
+.cv-needs-review-header:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
+
+.cv-needs-review-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #b91c1c;
+}
+
+.cv-needs-review-subtitle {
+  font-size: 12px;
+  color: #9ca3af;
+  flex: 1;
+}
+
+.cv-needs-review-chevron {
+  font-size: 16px;
+  color: #b91c1c;
+  flex-shrink: 0;
+}
+
+.cv-needs-review-body {
+  display: none;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.cv-needs-review-body--open {
+  display: flex;
+}
+
+.cv-outlier-card {
+  padding: 12px 16px;
+  border-bottom: 1px solid #fee2e2;
+  background: white;
+}
+
+.cv-outlier-card:last-child { border-bottom: none; }
+
+.cv-outlier-text {
+  font-size: 13px;
+  color: var(--color-text);
+  line-height: 1.45;
+  margin-bottom: 8px;
+}
+
+.cv-outlier-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cv-outlier-author {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.cv-outlier-reason {
+  font-size: 11px;
+  color: #9ca3af;
+  padding: 2px 6px;
+  background: #fef2f2;
+  border-radius: 4px;
+}
+
+/* ─── Level 2/3: Agent Activity panel ──────────────────────────── */
+.cv-agent-section {
+  margin: 12px 28px 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+  flex-shrink: 0; /* prevent flex column from squashing this section */
+}
+
+.cv-agent-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #fafaf9;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.cv-agent-header:hover { background: #f3f4f6; }
+.cv-agent-header:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
+
+.cv-agent-header-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-border);
+  flex-shrink: 0;
+  transition: background 0.3s;
+}
+
+.cv-agent-header-dot--done {
+  background: #16a34a;
+}
+
+.cv-agent-header-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  flex: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cv-agent-header-chevron {
+  font-size: 16px;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.cv-agent-body {
+  display: none;
+  flex-direction: column;
+  border-top: 1px solid var(--color-border);
+  max-height: 360px;
+}
+
+.cv-agent-body--open {
+  display: flex;
+}
+
+.cv-agent-goal {
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+  background: #f9f9f8;
+  border-bottom: 1px solid var(--color-border);
+  line-height: 1.45;
+}
+
+.cv-agent-steps {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Individual step rows */
+.cv-agent-step {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 14px;
+  font-size: 12px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.cv-agent-step--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.cv-agent-step-icon {
+  width: 14px;
+  text-align: center;
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+.cv-agent-step--running .cv-agent-step-icon { color: var(--color-primary); animation: spin 1.2s linear infinite; }
+.cv-agent-step--done    .cv-agent-step-icon { color: #16a34a; }
+.cv-agent-step--retry   .cv-agent-step-icon { color: #b45309; }
+.cv-agent-step--warn    .cv-agent-step-icon { color: #b91c1c; }
+.cv-agent-step--reason  .cv-agent-step-icon { color: var(--color-text-muted); }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.cv-agent-step-label {
+  color: var(--color-text);
+  flex: 1;
+}
+
+.cv-agent-step--running .cv-agent-step-label { color: var(--color-text-muted); }
+
+.cv-agent-step-result {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Progress bar inside steps */
+.cv-agent-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+}
+
+.cv-agent-progress-bar-track {
+  flex: 1;
+  height: 4px;
+  background: var(--color-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.cv-agent-progress-bar-fill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+  width: 0%;
+}
+
+.cv-agent-progress-label {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* Completion message */
+.cv-agent-complete {
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #16a34a;
+  border-top: 1px solid var(--color-border);
+  background: #f0fdf4;
+}
+
+/* Download Report button */
+.cv-download-btn {
+  margin: 10px 14px;
+  align-self: flex-start;
+  font-size: 12px;
+  padding: 6px 14px;
 }
 
 /* ─── Reduced motion ────────────────────────────────────────────── */
