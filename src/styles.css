@@ -502,6 +502,19 @@ body {
   padding: 2px 7px;
 }
 
+/* Appears below keyphrase chips when ≥1 note in this cluster has a low        */
+/* silhouette score. Clicking the tile opens the detail panel where the        */
+/* outlier notes are grouped at the top.                                       */
+.cv-tile-outlier-badge {
+  font-size: 11px;
+  color: #b45309;               /* amber-700 — readable on white, not alarming */
+  background: #fef3c7;          /* amber-100 */
+  border: 1px solid #fcd34d;    /* amber-300 */
+  border-radius: 4px;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+
 /* ── Detail panel ───────────────────────────────────────────────── */
 .cv-panel {
   flex: 0 0 0;
@@ -1073,96 +1086,18 @@ body {
 }
 
 /* ─── Level 1: Needs Review section ────────────────────────────── */
-.cv-needs-review {
+/* One-line redirect footer — the full card list was replaced with inline      */
+/* badges on cluster tiles. This footer stays so a user who scrolls down has   */
+/* a clear signal pointing them back up to the tiles.                          */
+.cv-needs-review-footer {
   margin: 0 28px 28px;
-  border: 1px solid #fecaca;
-  border-radius: 8px;
-  overflow: hidden;
-  background: white;
-  flex-shrink: 0;
-}
-
-.cv-needs-review-header {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  background: #fef2f2;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-  border-bottom: 1px solid #fecaca;
-}
-
-.cv-needs-review-header:hover { background: #fee2e2; }
-.cv-needs-review-header:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
-
-.cv-needs-review-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: #b91c1c;
-}
-
-.cv-needs-review-subtitle {
-  font-size: 12px;
-  color: #9ca3af;
-  flex: 1;
-}
-
-.cv-needs-review-chevron {
-  font-size: 16px;
-  color: #b91c1c;
-  flex-shrink: 0;
-}
-
-.cv-needs-review-body {
-  display: none;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.cv-needs-review-body--open {
-  display: flex;
-}
-
-.cv-outlier-card {
-  padding: 12px 16px;
-  border-bottom: 1px solid #fee2e2;
-  background: white;
-}
-
-.cv-outlier-card:last-child { border-bottom: none; }
-
-.cv-outlier-text {
-  font-size: 13px;
-  color: var(--color-text);
-  line-height: 1.45;
-  margin-bottom: 8px;
-}
-
-.cv-outlier-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.cv-outlier-author {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  padding: 10px 16px;
   font-size: 12px;
   color: var(--color-text-muted);
-  font-style: italic;
-}
-
-.cv-outlier-reason {
-  font-size: 11px;
-  color: #9ca3af;
-  padding: 2px 6px;
-  background: #fef2f2;
-  border-radius: 4px;
+  background: #fef9f9;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  flex-shrink: 0;
 }
 
 /* ─── Level 2/3: Agent Activity panel ──────────────────────────── */
@@ -1201,6 +1136,28 @@ body {
 
 .cv-agent-header-dot--done {
   background: #16a34a;
+}
+
+/* Subtle opacity pulse while the agent loop is running.                       */
+/* Suppressed via prefers-reduced-motion at the bottom of this file.           */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+
+.cv-agent-header-dot--running {
+  background: var(--color-primary);
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}
+
+/* "X / Y" counter displayed in the collapsed header while the agent runs.     */
+/* Clears on completion so the green dot alone signals "done".                 */
+.cv-agent-header-progress {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+  min-width: 40px;          /* prevents header width jitter as digits change */
+  text-align: right;
 }
 
 .cv-agent-header-title {
@@ -1339,17 +1296,62 @@ body {
   background: #f0fdf4;
 }
 
-/* Download Report button */
+/* Download Report button — lives between the header and the collapsible body, */
+/* so it is always reachable once the agent completes. `display: block` plus   */
+/* auto right-margin keeps it left-aligned inside the section block.           */
 .cv-download-btn {
+  display: block;
   margin: 10px 14px;
-  align-self: flex-start;
   font-size: 12px;
   padding: 6px 14px;
 }
 
+/* ─── Outlier group in detail panel ────────────────────────────── */
+/* Prepended above normal note cards so reviewers see flagged notes  */
+/* immediately. Only rendered when the cluster has ≥1 outlier.      */
+.cv-panel-outlier-group {
+  margin-bottom: 12px;
+  border: 1px solid #fcd34d;    /* amber-300 */
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fffbeb;          /* amber-50 */
+}
+
+.cv-panel-outlier-header {
+  padding: 8px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #92400e;               /* amber-800 */
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: #fef3c7;          /* amber-100 */
+  border-bottom: 1px solid #fcd34d;
+}
+
+.cv-panel-outlier-card {
+  padding: 10px 14px;
+  border-bottom: 1px solid #fde68a; /* amber-200 */
+}
+
+.cv-panel-outlier-card:last-child { border-bottom: none; }
+
+.cv-panel-outlier-text {
+  font-size: 13px;
+  color: var(--color-text);
+  line-height: 1.45;
+  margin-bottom: 5px;
+}
+
+.cv-panel-outlier-reason {
+  font-size: 11px;
+  color: #92400e;
+  line-height: 1.4;
+}
+
 /* ─── Reduced motion ────────────────────────────────────────────── */
-/* Skip decorative entrance animations; keep functional transitions  */
-/* (hover feedback, progress bar, panel slide) which convey state.  */
+/* Skip decorative entrance animations and pulse — keep functional   */
+/* transitions (hover feedback, progress bar, panel slide) which     */
+/* convey state change.                                              */
 @media (prefers-reduced-motion: reduce) {
   .hull-layer          { transition: none; }
   .progress-bar-fill   { transition: none; }
@@ -1357,4 +1359,5 @@ body {
   .cv-tile             { transition: none; }
   .sticky              { transition: none; }
   .pill-track, .pill-knob { transition: none; }
+  .cv-agent-header-dot--running { animation: none; }
 }

@@ -5,9 +5,9 @@
  *   Left column (scrollable):
  *     1. Board summary (Level 1 reactive agent)
  *     2. Merge suggestion cards (Level 1, dismissible)
- *     3. Agent Activity panel (Level 2/3, collapsible, streams steps)
- *     4. Cluster grid (sorted by composite rank, rank badges)
- *     5. Needs Review section (Level 1, collapsible)
+ *     3. Cluster grid (sorted by composite rank, rank badges)  ← primary content
+ *     4. Agent Activity panel (Level 2/3, collapsible, streams steps)
+ *     5. Needs Review footer (Level 1, redirect to tile badges)
  *   Right panel (detail panel, slides in on tile click)
  */
 
@@ -176,16 +176,46 @@ function buildAgentPanel() {
   const section = document.createElement('div');
   section.className = 'cv-agent-section';
 
+  // ── Header: [dot] [title] [progress counter] [chevron] ──────────────────────
+  // Built via DOM (not innerHTML) so we can hold direct references to the
+  // progress counter and dot for live updates.
   const header = document.createElement('button');
   header.className = 'cv-agent-header';
   header.setAttribute('aria-expanded', 'false');
   header.setAttribute('aria-controls', 'cv-agent-body');
-  header.innerHTML = `
-    <span class="cv-agent-header-dot"></span>
-    <span class="cv-agent-header-title">Agent Activity</span>
-    <span class="cv-agent-header-chevron" aria-hidden="true">›</span>
-  `;
 
+  const dotEl = document.createElement('span');
+  dotEl.className = 'cv-agent-header-dot';
+
+  const titleEl = document.createElement('span');
+  titleEl.className   = 'cv-agent-header-title';
+  titleEl.textContent = 'Agent Activity';
+
+  // Counter updates in-place while the agent runs ("3 / 15").
+  // Cleared on completion so the completed header stays clean.
+  const progressEl = document.createElement('span');
+  progressEl.className = 'cv-agent-header-progress';
+
+  const chevronEl = document.createElement('span');
+  chevronEl.className = 'cv-agent-header-chevron';
+  chevronEl.setAttribute('aria-hidden', 'true');
+  chevronEl.textContent = '›';
+
+  header.appendChild(dotEl);
+  header.appendChild(titleEl);
+  header.appendChild(progressEl);
+  header.appendChild(chevronEl);
+
+  // ── Download button — lives OUTSIDE the collapsible body ────────────────────
+  // Positioned between the header and the body so it is always reachable once
+  // the agent completes, regardless of whether the user has opened the log.
+  const downloadBtn = document.createElement('button');
+  downloadBtn.className = 'btn-primary cv-download-btn hidden';
+  downloadBtn.textContent = 'Download Report';
+  downloadBtn.disabled = true;
+  downloadBtn.title = 'Run the pipeline first to generate a report';
+
+  // ── Collapsible body: goal + step log + completion message ──────────────────
   const body = document.createElement('div');
   body.className = 'cv-agent-body';
   body.id        = 'cv-agent-body';
@@ -202,25 +232,19 @@ function buildAgentPanel() {
   const completeEl = document.createElement('div');
   completeEl.className = 'cv-agent-complete hidden';
 
-  const downloadBtn = document.createElement('button');
-  downloadBtn.className = 'btn-primary cv-download-btn';
-  downloadBtn.textContent = 'Download Report';
-  downloadBtn.disabled = true;
-  downloadBtn.title = 'Run the pipeline first to generate a report';
-
   body.appendChild(goalEl);
   body.appendChild(stepsEl);
   body.appendChild(completeEl);
-  body.appendChild(downloadBtn);
 
   section.appendChild(header);
+  section.appendChild(downloadBtn);
   section.appendChild(body);
 
   // Toggle expand/collapse
   header.addEventListener('click', () => {
     const open = body.classList.toggle('cv-agent-body--open');
     header.setAttribute('aria-expanded', open ? 'true' : 'false');
-    header.querySelector('.cv-agent-header-chevron').textContent = open ? '⌄' : '›';
+    chevronEl.textContent = open ? '⌄' : '›';
   });
 
   let _downloadContent = null;
@@ -239,16 +263,14 @@ function buildAgentPanel() {
 
   // Public API exposed to main.js
   function addAgentStep(step) {
-    // Auto-open the panel on first meaningful step
-    if (!body.classList.contains('cv-agent-body--open') && step.type !== 'progress') {
-      body.classList.add('cv-agent-body--open');
-      header.setAttribute('aria-expanded', 'true');
-      header.querySelector('.cv-agent-header-chevron').textContent = '⌄';
-    }
+    // No auto-open. The panel stays collapsed; the progress counter in the
+    // header serves as the trust signal. Users can expand the log on demand.
 
     switch (step.type) {
       case 'goal': {
         goalEl.textContent = step.text;
+        // Start the pulsing dot animation
+        dotEl.classList.add('cv-agent-header-dot--running');
         break;
       }
 
@@ -263,7 +285,6 @@ function buildAgentPanel() {
         if (step.status === 'running') {
           appendStep(stepsEl, 'running', toolLabel, clusterName, null);
         } else {
-          // Update the last running row for this tool+cluster to 'done'
           const last = findLastRunningRow(stepsEl, step.tool, step.cluster);
           if (last) {
             markStepDone(last, step.result);
@@ -282,12 +303,22 @@ function buildAgentPanel() {
 
       case 'progress': {
         const pct = Math.round((step.processed / step.total) * 100);
-        // Update or create progress bar
+        // Update the compact header counter
+        progressEl.textContent = `${step.processed} / ${step.total}`;
+        // Update or create the in-body progress bar
         let progressRow = stepsEl.querySelector('.cv-agent-progress-row');
         if (!progressRow) {
           progressRow = document.createElement('div');
           progressRow.className = 'cv-agent-progress-row';
-          progressRow.innerHTML = `<div class="cv-agent-progress-bar-track"><div class="cv-agent-progress-bar-fill"></div></div><span class="cv-agent-progress-label"></span>`;
+          const track = document.createElement('div');
+          track.className = 'cv-agent-progress-bar-track';
+          const fill = document.createElement('div');
+          fill.className = 'cv-agent-progress-bar-fill';
+          track.appendChild(fill);
+          const lbl = document.createElement('span');
+          lbl.className = 'cv-agent-progress-label';
+          progressRow.appendChild(track);
+          progressRow.appendChild(lbl);
           stepsEl.appendChild(progressRow);
         }
         progressRow.querySelector('.cv-agent-progress-bar-fill').style.width = `${pct}%`;
@@ -304,12 +335,14 @@ function buildAgentPanel() {
       case 'complete': {
         completeEl.classList.remove('hidden');
         completeEl.textContent = step.text;
-        header.querySelector('.cv-agent-header-dot').classList.add('cv-agent-header-dot--done');
+        dotEl.classList.remove('cv-agent-header-dot--running');
+        dotEl.classList.add('cv-agent-header-dot--done');
+        progressEl.textContent = ''; // clear counter; dot colour signals completion
         break;
       }
     }
 
-    // Scroll to bottom
+    // Scroll the step log to the latest entry (only visible when panel is open)
     stepsEl.scrollTop = stepsEl.scrollHeight;
   }
 
@@ -318,6 +351,7 @@ function buildAgentPanel() {
     _downloadFilename = filename ?? 'report.md';
     downloadBtn.disabled = false;
     downloadBtn.title    = 'Download the analysis report as a Markdown file';
+    downloadBtn.classList.remove('hidden');
   }
 
   return { section, addAgentStep, activateDownload };
@@ -388,71 +422,31 @@ function markStepDone(row, result) {
   }
 }
 
-// ─── Level 1: Needs Review section ───────────────────────────────────────────
+// ─── Level 1: Needs Review footer ────────────────────────────────────────────
+//
+// The full card-per-outlier section has been replaced with a one-line redirect
+// footer. Outlier details live on each cluster tile (badge) and in the detail
+// panel (grouped at the top of the note list). This footer exists only so that
+// a user who scrolls to the bottom sees a signal and knows where to look.
 
 function buildNeedsReview(outliers) {
   if (!outliers || outliers.length === 0) return null;
 
-  const section = document.createElement('div');
-  section.className = 'cv-needs-review';
+  const footer = document.createElement('div');
+  footer.className = 'cv-needs-review-footer';
 
-  const header = document.createElement('button');
-  header.className = 'cv-needs-review-header';
-  header.setAttribute('aria-expanded', 'false');
-  header.setAttribute('aria-controls', 'cv-needs-review-body');
-  header.innerHTML = `
-    <span class="cv-needs-review-title">Needs Review (${outliers.length})</span>
-    <span class="cv-needs-review-subtitle">The algorithm wasn't confident about these.</span>
-    <span class="cv-needs-review-chevron" aria-hidden="true">›</span>
-  `;
+  const flag = document.createElement('span');
+  flag.setAttribute('aria-hidden', 'true');
+  flag.textContent = '⚑ ';
 
-  const body = document.createElement('div');
-  body.className = 'cv-needs-review-body';
-  body.id        = 'cv-needs-review-body';
+  const msg = document.createElement('span');
+  msg.textContent =
+    `${outliers.length} note${outliers.length !== 1 ? 's' : ''} flagged for review` +
+    ` — shown on their cluster tiles above`;
 
-  outliers.forEach(outlier => {
-    const card = document.createElement('div');
-    card.className = 'cv-outlier-card';
-
-    const textEl = document.createElement('div');
-    textEl.className = 'cv-outlier-text';
-    textEl.textContent = outlier.text;
-
-    const meta = document.createElement('div');
-    meta.className = 'cv-outlier-meta';
-
-    const authorSpan = document.createElement('span');
-    authorSpan.className = 'cv-outlier-author';
-
-    const avatar = document.createElement('span');
-    avatar.className   = 'cv-avatar cv-avatar--sm';
-    avatar.textContent = authorInitials(outlier.author);
-    avatar.style.background = authorColor(outlier.author);
-
-    authorSpan.appendChild(avatar);
-    authorSpan.appendChild(document.createTextNode(` ${outlier.author}`));
-
-    const reasonSpan = document.createElement('span');
-    reasonSpan.className   = 'cv-outlier-reason';
-    reasonSpan.textContent = outlier.reason;
-
-    meta.appendChild(authorSpan);
-    meta.appendChild(reasonSpan);
-    card.appendChild(textEl);
-    card.appendChild(meta);
-    body.appendChild(card);
-  });
-
-  section.appendChild(header);
-  section.appendChild(body);
-
-  header.addEventListener('click', () => {
-    const open = body.classList.toggle('cv-needs-review-body--open');
-    header.setAttribute('aria-expanded', open ? 'true' : 'false');
-    header.querySelector('.cv-needs-review-chevron').textContent = open ? '⌄' : '›';
-  });
-
-  return section;
+  footer.appendChild(flag);
+  footer.appendChild(msg);
+  return footer;
 }
 
 // ─── Main export ──────────────────────────────────────────────────────────────
@@ -474,6 +468,15 @@ export function renderClusterView(container, notes, assignments, clusters, optio
   const groups = clusters.map(() => []);
   assignments.forEach((ci, ni) => { if (groups[ci]) groups[ci].push(ni); });
 
+  // Index outlier notes by their assigned cluster label so tile badges and the
+  // detail panel can look them up without re-scanning the full outliers array.
+  const outliersByLabel = new Map();
+  for (const o of (insights?.outliers ?? [])) {
+    const list = outliersByLabel.get(o.assignedCluster) ?? [];
+    list.push(o);
+    outliersByLabel.set(o.assignedCluster, list);
+  }
+
   // ── Left column (scrollable) ──────────────────────────────────────────────
   const leftCol = document.createElement('div');
   leftCol.className = 'cv-left-col';
@@ -489,11 +492,8 @@ export function renderClusterView(container, notes, assignments, clusters, optio
     if (mergeEl) leftCol.appendChild(mergeEl);
   }
 
-  // 3. Agent Activity panel (always present, starts collapsed)
-  const { section: agentSection, addAgentStep, activateDownload } = buildAgentPanel();
-  leftCol.appendChild(agentSection);
-
-  // 4. Cluster grid — sorted by composite rank score (Level 1)
+  // 3. Cluster grid — sorted by composite rank score (Level 1) — primary content
+  //    Built below and appended here so it appears before the agent panel.
   const sortedClusters = insights?.rankedClusters
     ?? clusters.map((c, ci) => ({ ...c, ci, rank: ci + 1 }));
 
@@ -595,7 +595,48 @@ export function renderClusterView(container, notes, assignments, clusters, optio
     panelContributors.appendChild(contribList);
 
     panelCards.innerHTML = '';
+
+    // ── Outlier group (prepended) ──────────────────────────────────────────────
+    // Notes with low silhouette scores get their own labelled section at the
+    // top of the panel so reviewers see them immediately without scanning.
+    const panelOutliers = outliersByLabel.get(cluster.label) ?? [];
+    const outlierNoteIdxSet = new Set(
+      panelOutliers.map(o => notes.findIndex(n => n.text === o.text && n.author === o.author))
+    );
+    if (panelOutliers.length > 0) {
+      const group = document.createElement('div');
+      group.className = 'cv-panel-outlier-group';
+
+      const groupHeader = document.createElement('div');
+      groupHeader.className   = 'cv-panel-outlier-header';
+      groupHeader.textContent = '⚑ Low-confidence placement';
+
+      group.appendChild(groupHeader);
+
+      panelOutliers.forEach(o => {
+        const oCard = document.createElement('div');
+        oCard.className = 'cv-panel-outlier-card';
+
+        const oText = document.createElement('div');
+        oText.className   = 'cv-panel-outlier-text';
+        oText.textContent = o.text;
+
+        const oReason = document.createElement('div');
+        oReason.className   = 'cv-panel-outlier-reason';
+        oReason.textContent = o.reason;
+
+        oCard.appendChild(oText);
+        oCard.appendChild(oReason);
+        group.appendChild(oCard);
+      });
+
+      panelCards.appendChild(group);
+    }
+
     noteIdxs.forEach(ni => {
+      // Skip notes already shown in the outlier group
+      if (outlierNoteIdxSet.has(ni)) return;
+
       const note    = notes[ni];
       const bgColor = STICKY_COLORS[note.color] ?? STICKY_COLORS.default;
 
@@ -719,6 +760,17 @@ export function renderClusterView(container, notes, assignments, clusters, optio
       chips.appendChild(chip);
     });
 
+    // Outlier badge — visible on the tile so users spot flagged notes without
+    // opening the detail panel.  Only rendered when this cluster has ≥ 1 outlier.
+    const tileOutliers = outliersByLabel.get(cluster.label) ?? [];
+    if (tileOutliers.length > 0) {
+      const badge = document.createElement('span');
+      badge.className = 'cv-tile-outlier-badge';
+      badge.textContent =
+        `⚑ ${tileOutliers.length} need${tileOutliers.length !== 1 ? '' : 's'} review`;
+      chips.appendChild(badge);
+    }
+
     tile.appendChild(rankBadge);
     tile.appendChild(tileHeader);
     tile.appendChild(avatarStrip);
@@ -728,9 +780,15 @@ export function renderClusterView(container, notes, assignments, clusters, optio
     grid.appendChild(tile);
   });
 
+  // Grid is item #3 (primary content)
   leftCol.appendChild(grid);
 
-  // 5. Needs Review section (Level 1)
+  // 4. Agent Activity panel — always present, starts collapsed. Positioned
+  //    below the grid so the user sees clusters immediately on tab switch.
+  const { section: agentSection, addAgentStep, activateDownload } = buildAgentPanel();
+  leftCol.appendChild(agentSection);
+
+  // 5. Needs Review redirect footer — one-line pointer to the tile badges.
   const needsReviewEl = buildNeedsReview(insights?.outliers);
   if (needsReviewEl) leftCol.appendChild(needsReviewEl);
 

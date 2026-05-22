@@ -55,8 +55,8 @@ export function detectOutliers(notes, assignments, perNoteSilhouette, clusters) 
         silhouette:      s,
         assignedCluster: cluster?.label ?? 'Unknown',
         reason:          s < 0
-          ? 'Fits better in a different cluster than the one it was assigned to.'
-          : 'Does not cluster cleanly with others in its group.',
+          ? 'This note\'s content is more similar to a different theme. Consider moving it or reviewing whether its cluster assignment makes sense.'
+          : 'This note sits on the boundary between themes. It may belong here or in a related cluster — worth a second look.',
       });
     }
   }
