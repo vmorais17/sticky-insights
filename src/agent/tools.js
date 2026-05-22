@@ -46,7 +46,7 @@ const CLASSIFICATION_SIGNALS = {
     'bug', 'broken', 'crash', 'error', 'fail', 'freeze', 'stuck', 'wrong',
     'issue', 'problem', 'glitch', 'not working', 'not load', 'exception',
     'missing', 'disappeared', 'corrupt', 'lag', 'hang', 'stutter', 'blank',
-    'null', 'incorrect', 'broken', 'misbehav', 'unexpected',
+    'null', 'incorrect', 'misbehav', 'unexpected',
   ],
   feature_request: [
     'add', 'need', 'want', 'wish', 'should', 'would like', 'request',

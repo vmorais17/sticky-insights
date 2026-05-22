@@ -1237,7 +1237,11 @@ export async function clusterNotes(notes, options = {}) {
     }
 
     await report('Naming your insights...', 100);
-    // Small-board path: each note is its own cluster, silhouette is undefined
+    // Small-board path: each note is its own cluster (cluster_id === note index).
+    // embeddings[i] is therefore the exact centroid of cluster i — no averaging
+    // needed.  Length equals clusters.length so detectMergeCandidates indexes
+    // correctly.  Silhouette is 0 for all notes (no intra-cluster distance to
+    // compute with a single member).
     return {
       results,
       embeddingsReduced,

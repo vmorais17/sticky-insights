@@ -8,6 +8,13 @@
  * pairs (merge candidates), and synthesises a plain-language board summary.
  */
 
+// Silhouette scores are computed on PCA-30D embeddings (not the full 384-dim
+// space and not the 2D UMAP projection used for the scatter view).  PCA-30D
+// retains ~90 % of variance for typical sentence-embedding corpora, so
+// distances are close to full-dim — the threshold below is calibrated for
+// that range.  Scores in [0.10, 0.55] are typical for well-separated sticky-
+// note clusters; anything below 0.05 indicates the note's placement has near-
+// zero confidence.
 const OUTLIER_SILHOUETTE_THRESHOLD = 0.05;
 const MERGE_SIMILARITY_THRESHOLD   = 0.75;
 
@@ -31,16 +38,23 @@ function cosineSim(a, b) {
 export function detectOutliers(notes, assignments, perNoteSilhouette, clusters) {
   const outliers = [];
   for (let i = 0; i < notes.length; i++) {
-    const s = perNoteSilhouette[i];
+    const s          = perNoteSilhouette[i];
+    const cluster    = clusters[assignments[i]];
+    const clusterSize = cluster?.note_ids?.length ?? 0;
+
+    // Singleton clusters score 0 by definition (no intra-cluster distance to
+    // compute).  Flagging them as outliers would be misleading — they weren't
+    // placed ambiguously, there simply was nothing to compare against.
+    if (clusterSize <= 1) continue;
+
     if (s < OUTLIER_SILHOUETTE_THRESHOLD) {
-      const clusterLabel = clusters[assignments[i]]?.label ?? 'Unknown';
       outliers.push({
-        noteIdx:        i,
-        text:           notes[i].text,
-        author:         notes[i].author ?? 'unknown',
-        silhouette:     s,
-        assignedCluster: clusterLabel,
-        reason:         s < 0
+        noteIdx:         i,
+        text:            notes[i].text,
+        author:          notes[i].author ?? 'unknown',
+        silhouette:      s,
+        assignedCluster: cluster?.label ?? 'Unknown',
+        reason:          s < 0
           ? 'Fits better in a different cluster than the one it was assigned to.'
           : 'Does not cluster cleanly with others in its group.',
       });

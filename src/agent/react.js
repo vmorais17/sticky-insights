@@ -159,7 +159,9 @@ export async function runReActLoop(clusters, notes, onStep, flanT5, levelOneInsi
             { cluster_label: label, classification: r.classification, notes: memberNotes, keyphrases },
             flanT5,
           );
-          if (!brief || brief.length < 20) throw new Error('empty');
+          // tools.js guarantees ≥ 40 chars (model output) or a full template
+          // sentence (always > 100 chars). Threshold aligned with tools.js.
+          if (!brief || brief.length < 40) throw new Error('too short');
         } catch (_) {
           if (r.retries < 1) {
             r.retries++;
