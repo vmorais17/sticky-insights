@@ -288,7 +288,18 @@ btnClusterAction.addEventListener('click', async () => {
   } catch (err) {
     hideProgress();
     console.error('Insight discovery failed:', err);
-    alert(`Insight discovery failed: ${err.message}`);
+    // "Failed to fetch" = the ONNX WASM runtime or the Hugging Face model
+    // weights couldn't be downloaded.  Give the user an actionable message
+    // instead of the raw network error string.
+    const isNetworkError = err.message === 'Failed to fetch'
+      || err.message?.includes('NetworkError')
+      || err.name === 'TypeError';
+    const msg = isNetworkError
+      ? 'Could not load the AI models — check your internet connection and try again.\n\n'
+        + '(The app downloads model weights from Hugging Face on first run. '
+        + 'They are cached locally after that.)'
+      : `Insight discovery failed: ${err.message}`;
+    alert(msg);
   } finally {
     btnClusterAction.disabled = false;
   }
