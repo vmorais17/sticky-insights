@@ -1348,6 +1348,19 @@ body {
   line-height: 1.4;
 }
 
+.cv-panel-outlier-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.cv-panel-outlier-author {
+  font-size: 11px;
+  color: #92400e;
+  font-style: italic;
+}
+
 /* ─── Reduced motion ────────────────────────────────────────────── */
 /* Skip decorative entrance animations and pulse — keep functional   */
 /* transitions (hover feedback, progress bar, panel slide) which     */

@@ -625,8 +625,28 @@ export function renderClusterView(container, notes, assignments, clusters, optio
         oReason.className   = 'cv-panel-outlier-reason';
         oReason.textContent = o.reason;
 
+        // Author footer — same pattern as regular note cards so reviewers
+        // know who wrote the note without opening a separate view.
+        const oFooter = document.createElement('div');
+        oFooter.className = 'cv-panel-outlier-footer';
+
+        const oAvatar = document.createElement('span');
+        oAvatar.className   = 'cv-avatar cv-avatar--sm';
+        oAvatar.textContent = authorInitials(o.author);
+        oAvatar.style.background = authorColor(o.author);
+        oAvatar.setAttribute('role', 'img');
+        oAvatar.setAttribute('aria-label', o.author);
+
+        const oAuthorName = document.createElement('span');
+        oAuthorName.className   = 'cv-panel-outlier-author';
+        oAuthorName.textContent = o.author;
+
+        oFooter.appendChild(oAvatar);
+        oFooter.appendChild(oAuthorName);
+
         oCard.appendChild(oText);
         oCard.appendChild(oReason);
+        oCard.appendChild(oFooter);
         group.appendChild(oCard);
       });
 
